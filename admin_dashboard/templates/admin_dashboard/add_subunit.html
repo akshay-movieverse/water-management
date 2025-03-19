@@ -1,0 +1,36 @@
+{% extends "admin_dashboard/base.html" %}
+{% block content %}
+    <h2>Add Subunits to {{ unit.name }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        
+        <div id="subunit-fields">
+            <div class="input-group mb-2">
+                <input type="text" name="subunits[]" class="form-control" placeholder="Subunit Name">
+                <button type="button" class="btn btn-danger remove-subunit">Remove</button>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary" id="add-subunit">Add Subunit</button>
+
+        <button type="submit" class="btn btn-success mt-3">Save</button>
+    </form>
+
+    <script>
+        document.getElementById('add-subunit').addEventListener('click', function() {
+            let subunitFields = document.getElementById('subunit-fields');
+            let newField = document.createElement('div');
+            newField.classList.add('input-group', 'mb-2');
+            newField.innerHTML = `
+                <input type="text" name="subunits[]" class="form-control" placeholder="Subunit Name">
+                <button type="button" class="btn btn-danger remove-subunit">Remove</button>
+            `;
+            subunitFields.appendChild(newField);
+        });
+
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-subunit')) {
+                event.target.parentElement.remove();
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit Manager</h2>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Username *</label>
+            <input type="text" name="username" class="form-control" value="{{ manager.username }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Name *</label>
+            <input type="text" name="name" class="form-control" value="{{ manager.first_name }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Assign Unit (Optional)</label>
+            <select name="unit" class="form-select">
+                <option value="">-- Select Unit --</option>
+                {% for unit in units %}
+                <option value="{{ unit.id }}" {% if manager.unit.id == unit.id %}selected{% endif %}>{{ unit.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Email (Optional)</label>
+            <input type="email" name="email" class="form-control" value="{{ manager.email }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Phone No (Optional)</label>
+            <input type="text" name="phone" class="form-control" value="{{ manager.phone_number }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">New Password (Optional)</label>
+            <input type="password" name="password" class="form-control">
+            <small class="text-muted">Leave blank to keep the existing password.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a href="{% url 'manager_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

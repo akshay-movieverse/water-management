@@ -1,0 +1,92 @@
+{% extends "admin_dashboard/base.html" %}
+{% block content %}
+
+{% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+    <h2 class="page-title">Add Unit</h2>
+
+    <div class="form-container">
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- Main Unit Section -->
+            <h4 class="section-title">Main Unit</h4>
+            <div class="mb-3">
+                <label>Unit Name</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label>City</label>
+                <input type="text" name="city" class="form-control" required>
+            </div>
+
+            <!-- Subunits Section -->
+            <h4 class="section-title">Subunits (Optional)</h4>
+            <div id="subunit-fields">
+                <div class="input-group mb-2">
+                    <input type="text" name="subunits[]" class="form-control" placeholder="Subunit Name">
+                    <button type="button" class="btn btn-danger remove-subunit">Remove</button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary" id="add-subunit">Add Subunit</button>
+
+            <!-- Recharge Units Section -->
+            <h4 class="section-title">Recharge Units (Optional)</h4>
+            <div id="recharge-fields">
+                <div class="input-group mb-2">
+                    <input type="text" name="recharge_units[]" class="form-control" placeholder="Recharge Unit Name">
+                    <button type="button" class="btn btn-danger remove-recharge">Remove</button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary" id="add-recharge">Add Recharge Unit</button>
+
+            <!-- Save Button (Right-Aligned & New Row) -->
+            <div class="save-btn-container">
+                <button type="submit" class="btn btn-success">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('add-subunit').addEventListener('click', function() {
+            let subunitFields = document.getElementById('subunit-fields');
+            let newField = document.createElement('div');
+            newField.classList.add('input-group', 'mb-2');
+            newField.innerHTML = `
+                <input type="text" name="subunits[]" class="form-control" placeholder="Subunit Name">
+                <button type="button" class="btn btn-danger remove-subunit">Remove</button>
+            `;
+            subunitFields.appendChild(newField);
+        });
+
+        document.getElementById('add-recharge').addEventListener('click', function() {
+            let rechargeFields = document.getElementById('recharge-fields');
+            let newField = document.createElement('div');
+            newField.classList.add('input-group', 'mb-2');
+            newField.innerHTML = `
+                <input type="text" name="recharge_units[]" class="form-control" placeholder="Recharge Unit Name">
+                <button type="button" class="btn btn-danger remove-recharge">Remove</button>
+            `;
+            rechargeFields.appendChild(newField);
+        });
+
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-subunit')) {
+                event.target.parentElement.remove();
+            }
+            if (event.target.classList.contains('remove-recharge')) {
+                event.target.parentElement.remove();
+            }
+        });
+    </script>
+{% endblock %}

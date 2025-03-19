@@ -1,0 +1,4 @@
+monday/
+.env
+__pycache__/
+staticfiles/

@@ -1,0 +1,16 @@
+{% extends "admin_dashboard/base.html" %}
+{% block content %}
+    <h2>Edit Unit</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label>Unit Name</label>
+            <input type="text" name="name" class="form-control" value="{{ unit.name }}" required>
+        </div>
+        <div class="mb-3">
+            <label>City</label>
+            <input type="text" name="city" class="form-control" value="{{ unit.city }}" required>
+        </div>
+        <button type="submit" class="btn btn-success">Save Changes</button>
+    </form>
+{% endblock %}

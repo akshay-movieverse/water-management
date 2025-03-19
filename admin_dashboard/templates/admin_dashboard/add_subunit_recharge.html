@@ -1,0 +1,50 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Add Subunit / Recharge Unit to {{ unit.name }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div id="subunit-container">
+            <h4>Subunits</h4>
+            <button type="button" class="btn btn-success mb-2" onclick="addSubunitField()">+ Add Subunit</button>
+            <div id="subunit-fields"></div>
+        </div>
+
+        <div id="recharge-container" class="mt-4">
+            <h4>Recharge Units</h4>
+            <button type="button" class="btn btn-success mb-2" onclick="addRechargeField()">+ Add Recharge Unit</button>
+            <div id="recharge-fields"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Save</button>
+    </form>
+
+    <a href="{% url 'unit_detail' unit.id %}" class="btn btn-secondary mt-3">Back</a>
+</div>
+
+<script>
+function addSubunitField() {
+    let subunitFields = document.getElementById("subunit-fields");
+    let input = document.createElement("input");
+    input.type = "text";
+    input.name = "subunits[]";
+    input.className = "form-control mb-2";
+    input.placeholder = "Enter Subunit Name";
+    subunitFields.appendChild(input);
+}
+
+function addRechargeField() {
+    let rechargeFields = document.getElementById("recharge-fields");
+    let input = document.createElement("input");
+    input.type = "text";
+    input.name = "recharge_units[]";
+    input.className = "form-control mb-2";
+    input.placeholder = "Enter Recharge Unit Name";
+    rechargeFields.appendChild(input);
+}
+</script>
+
+{% endblock %}
