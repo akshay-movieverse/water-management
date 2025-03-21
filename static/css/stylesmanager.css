@@ -1,0 +1,29 @@
+/* Highlight invalid inputs */
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+/* Style for error messages */
+.invalid-feedback {
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+    display: none; /* Hide by default */
+}
+
+/* Box shadow for filled and valid subunit cards */
+.card-filled {
+    box-shadow: 0 0 0 .25rem rgb(208 0 194 / 38%);
+}
+
+/* Example custom styles */
+.card {
+    margin-bottom: 20px;
+}
+
+body{
+    background-color: #f0f0f0;
+}
+
+
+

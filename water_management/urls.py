@@ -12,11 +12,17 @@ def redirect_based_on_role(request):
             return redirect('manager_dashboard')
     return redirect('login')
 
+from django.contrib.auth import logout
+def custom_logout(request):
+    logout(request)
+    return redirect('login')  # Redirect to your login page
+
 urlpatterns = [
     path('', redirect_based_on_role, name='home'),  # Redirect to respective dashboard
     path('adminpanel/', include('admin_dashboard.urls')),
-    path('manager/', include('manager_dashboard.urls')),
+    path('managerpanel/', include('manager_dashboard.urls')),
     path('login/', LoginView.as_view(template_name='login.html'), name='login'),
         # path('login/', LoginView.as_view(template_name='login.html', redirect_authenticated_user=True), name='login'),
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
+    # path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
+    path('logout/', custom_logout, name='logout'),
 ]

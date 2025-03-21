@@ -1,26 +1,37 @@
 {% extends "admin_dashboard/base.html" %}
 {% block content %}
-    <h2>{{ unit.name }} ({{ unit.city }})</h2>
-    
-    <h3>Subunits</h3>
-    <ul>
-        {% for subunit in subunits %}
-            <li>
-                {{ subunit.name }}
-                <a href="{% url 'delete_subunit' subunit.id %}" class="btn btn-danger btn-sm">Remove</a>
-            </li>
-        {% endfor %}
-    </ul>
+<div class="container mt-4">
+    <div class="form-container">  <!-- Reusing existing form-container class -->
+        <h2 class="text-center page-title">{{ unit.name }} ({{ unit.city }})</h2>
+        
+        <div class="section-title">Subunits</div>
+        <ul class="list-group">
+            {% for subunit in subunits %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ subunit.name }}
+                    <a href="{% url 'delete_subunit' subunit.id %}" class="btn btn-danger btn-sm btn-delete">Remove</a>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-muted">No subunits available</li>
+            {% endfor %}
+        </ul>
 
-    <h3>Recharge Units</h3>
-    <ul>
-        {% for recharge_unit in recharge_units %}
-            <li>
-                {{ recharge_unit.name }}
-                <a href="{% url 'delete_recharge_unit' recharge_unit.id %}" class="btn btn-danger btn-sm">Remove</a>
-            </li>
-        {% endfor %}
-    </ul>
+        <div class="section-title mt-3">Recharge Units</div>
+        <ul class="list-group">
+            {% for recharge_unit in recharge_units %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ recharge_unit.name }}
+                    <a href="{% url 'delete_recharge_unit' recharge_unit.id %}" class="btn btn-danger btn-sm btn-delete">Remove</a>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-muted">No recharge units available</li>
+            {% endfor %}
+        </ul>
 
-    <a href="{% url 'add_subunit_recharge' unit.id %}" class="btn btn-primary">Add Subunits or Recharge Units</a>
+        <div class="save-btn-container">
+            <a href="{% url 'unit_list' %}" class="btn btn-secondary">Back</a>
+            <a href="{% url 'add_subunit_recharge' unit.id %}" class="btn btn-primary">Add Subunits or Recharge Units</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

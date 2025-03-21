@@ -28,3 +28,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
+
+
+
+    // Select all delete buttons
+    let deleteButtons = document.querySelectorAll(".btn-delete");
+
+    deleteButtons.forEach(button => {
+        button.addEventListener("click", function (event) {
+            event.preventDefault(); // Stop default link behavior
+            
+            let confirmDelete = confirm("Are you sure you want to delete this?");
+            if (confirmDelete) {
+                window.location.href = this.href; // Proceed to the delete URL
+            }
+        });
+    });

@@ -2,48 +2,81 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Add Subunit / Recharge Unit to {{ unit.name }}</h2>
+    <div class="form-container">
+        <h2 class="text-center page-title">Add Subunit / Recharge Unit to {{ unit.name }}</h2>
 
-    <form method="post">
-        {% csrf_token %}
-        
-        <div id="subunit-container">
-            <h4>Subunits</h4>
-            <button type="button" class="btn btn-success mb-2" onclick="addSubunitField()">+ Add Subunit</button>
-            <div id="subunit-fields"></div>
-        </div>
+        <form method="post">
+            {% csrf_token %}
 
-        <div id="recharge-container" class="mt-4">
-            <h4>Recharge Units</h4>
-            <button type="button" class="btn btn-success mb-2" onclick="addRechargeField()">+ Add Recharge Unit</button>
-            <div id="recharge-fields"></div>
-        </div>
+            <!-- Subunit Section -->
+            <div id="subunit-container">
+                <div class="section-title">Subunits</div>
+                <button type="button" class="btn btn-success btn-sm mb-2" onclick="addSubunitField()">+ Add Subunit</button>
+                <div id="subunit-fields"></div>
+            </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Save</button>
-    </form>
+            <!-- Recharge Unit Section -->
+            <div id="recharge-container" class="mt-4">
+                <div class="section-title">Recharge Units</div>
+                <button type="button" class="btn btn-success btn-sm mb-2" onclick="addRechargeField()">+ Add Recharge Unit</button>
+                <div id="recharge-fields"></div>
+            </div>
 
-    <a href="{% url 'unit_detail' unit.id %}" class="btn btn-secondary mt-3">Back</a>
+            <!-- Buttons in the Same Row -->
+            <div class="save-btn-container">
+                <a href="{% url 'unit_detail' unit.id %}" class="btn btn-secondary">Back</a>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+    </div>
 </div>
 
 <script>
 function addSubunitField() {
     let subunitFields = document.getElementById("subunit-fields");
+    let div = document.createElement("div");
+    div.className = "input-group mb-2";
+    
     let input = document.createElement("input");
     input.type = "text";
     input.name = "subunits[]";
-    input.className = "form-control mb-2";
+    input.className = "form-control";
     input.placeholder = "Enter Subunit Name";
-    subunitFields.appendChild(input);
+
+    let removeButton = document.createElement("button");
+    removeButton.className = "btn btn-danger";
+    removeButton.innerHTML = "Remove";
+    removeButton.type = "button";
+    removeButton.onclick = function() {
+        subunitFields.removeChild(div);
+    };
+
+    div.appendChild(input);
+    div.appendChild(removeButton);
+    subunitFields.appendChild(div);
 }
 
 function addRechargeField() {
     let rechargeFields = document.getElementById("recharge-fields");
+    let div = document.createElement("div");
+    div.className = "input-group mb-2";
+    
     let input = document.createElement("input");
     input.type = "text";
     input.name = "recharge_units[]";
-    input.className = "form-control mb-2";
+    input.className = "form-control";
     input.placeholder = "Enter Recharge Unit Name";
-    rechargeFields.appendChild(input);
+
+    let removeButton = document.createElement("button");
+    removeButton.className = "btn btn-danger";
+    removeButton.innerHTML = "Remove";
+    removeButton.type = "button";
+    removeButton.onclick = function() {
+        rechargeFields.removeChild(div);
+    };
+
+    div.appendChild(input);
+    div.appendChild(removeButton);
+    rechargeFields.appendChild(div);
 }
 </script>
 

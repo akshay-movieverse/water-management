@@ -33,7 +33,7 @@ class DailyReading(models.Model):
 class Attendance(models.Model):
     date = models.DateField()
     worker = models.ForeignKey(Worker, on_delete=models.CASCADE)
-    is_present = models.BooleanField(default=True)
+    is_present = models.BooleanField(default=False)
 
 class Expense(models.Model):
     date = models.DateField()
@@ -51,4 +51,7 @@ class Expense(models.Model):
         ('others', 'Others'),
     ]
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    #amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.IntegerField(null=True, blank=True)
+
+

@@ -140,6 +140,9 @@ def manager_list(request):
     managers = CustomUser.objects.filter(is_manager=True)
     return render(request, 'admin_dashboard/manager_list.html', {'managers': managers})
 
+
+from django.db import IntegrityError
+from django.core.exceptions import ValidationError
 @login_required
 def add_manager(request):
     units = Unit.objects.filter(is_deleted=False)
@@ -154,28 +157,43 @@ def add_manager(request):
 
         unit = get_object_or_404(Unit, id=unit_id) if unit_id else None
 
-        # Ensure unique username
+        # Check for duplicate username
         if CustomUser.objects.filter(username=username).exists():
-            return render(request, 'admin_dashboard/add_manager.html', {
-                'units': units,
-                'error': 'Username already exists. Choose another one.'
-            })
+            messages.error(request, "Username already exists. Choose another one.")
+            return render(request, 'admin_dashboard/add_manager.html', {'units': units})
 
-        manager = CustomUser.objects.create(
-            username=username,
-            first_name=name,
-            is_manager=True,
-            unit=unit,
-            email=email or '',
-            phone_number=phone or '',
-            password=make_password(password)
-        )
+        # Check for duplicate email
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "Email already exists. Please use a different email.")
+            return render(request, 'admin_dashboard/add_manager.html', {'units': units})
 
-        return redirect('manager_list')
+        try:
+            manager = CustomUser.objects.create(
+                username=username,
+                first_name=name,
+                is_manager=True,
+                unit=unit,
+                email=email or '',
+                phone_number=phone or '',
+                password=make_password(password)
+            )
+            messages.success(request, "Manager added successfully!")
+            return redirect('manager_list')
+
+        # except IntegrityError:
+        #     messages.error(request, "A user with this email already exists.")
+        #     return render(request, 'admin_dashboard/add_manager.html', {'units': units})
+
+        except ValidationError as ve:
+            messages.error(request, str(ve))
+
+        except IntegrityError:
+            messages.error(request, "A database error occurred. The email or username might already exist.")
+
+        except Exception as e:
+            messages.error(request, f"An unexpected error occurred: {str(e)}")
 
     return render(request, 'admin_dashboard/add_manager.html', {'units': units})
-
-
 
 from django.contrib.auth.hashers import make_password
 
@@ -224,3 +242,67 @@ def delete_manager(request, manager_id):
     return redirect('manager_list')
 
 ###################################################################################################
+from django.shortcuts import render, get_object_or_404
+from manager_dashboard.models import Expense, DailyReading, Attendance
+from admin_dashboard.models import ReportGeneration
+
+from django.shortcuts import render
+from datetime import date
+from .models import ReportGeneration, Unit
+
+def report_list(request):
+    today = date.today()
+
+    # Get filters from request
+    selected_date = request.GET.get('date')
+    selected_unit = request.GET.get('unit')
+
+    # Query reports
+    reports = ReportGeneration.objects.all().order_by('-date')
+
+    if selected_date:
+        reports = reports.filter(date=selected_date)
+
+    if selected_unit:
+        reports = reports.filter(unit_id=selected_unit)
+
+    # Fetch all units for the dropdown
+    units = Unit.objects.filter(is_deleted=False)
+
+    # Get all unique dates where reports are available
+    # Convert available report dates to string format (YYYY-MM-DD)
+    available_dates = list(ReportGeneration.objects.values_list('date', flat=True).distinct())
+    available_dates = [d.strftime('%Y-%m-%d') for d in available_dates]  # Convert to string
+    print(available_dates)
+
+    return render(request, 'admin_dashboard/report_list.html', {
+        'reports': reports,
+        'units': units,
+        'today': today,
+        'available_dates': available_dates  # Pass dates to template
+    })
+
+
+def report_detail(request, report_id):
+    report = get_object_or_404(ReportGeneration, id=report_id)
+    
+    subunit_readings = DailyReading.objects.filter(date=report.date, subunit__unit=report.unit)
+    expenses = Expense.objects.filter(date=report.date, unit=report.unit)
+    attendance = Attendance.objects.filter(date=report.date, worker__unit=report.unit)
+
+    total_income = sum(r.amount_rs() for r in subunit_readings)
+    total_expense = sum(e.amount for e in expenses)
+    total_water_supply = sum(r.water_supply() for r in subunit_readings)
+    cash_in_hand = total_income - total_expense
+
+    return render(request, 'admin_dashboard/admin_report.html', {
+        'date': report.date,
+        'report': report,
+        'subunit_readings': subunit_readings,
+        'expenses': expenses,
+        'attendance': attendance,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'total_water_supply': total_water_supply,
+        'cash_in_hand': cash_in_hand,
+    })

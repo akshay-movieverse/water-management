@@ -1,0 +1,137 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block content %}
+<style>
+    @media (max-width: 768px) {
+        .table-container {
+            margin-left: -25px;
+            margin-right: -25px;
+            width: calc(100% + 50px);
+        }
+    }
+    .highlight-date {
+        background-color: #28a745 !important; /* Green */
+        color: white !important;
+        border-radius: 50%;
+    }
+</style>
+<div class="container mt-4">
+    <h2 class="mb-3">Generated Reports</h2>
+
+    <!-- Filters Section -->
+    <div class="d-flex justify-content-end">
+        <form method="GET" class="row g-2">
+            <div class="col-12 col-md-auto">
+                <label for="dateFilter" class="form-label">Date</label>
+                {% comment %} <input type="date" name="date" id="dateFilter" class="form-control" value="{{ request.GET.date|default:today }}"> {% endcomment %}
+                {% comment %} <input type="text" name="date" id="dateFilter" class="form-control" autocomplete="off"> {% endcomment %}
+                <div class="input-group">
+                    <input type="text" name="date" id="dateFilter" class="form-control"  readonly>
+                    <button class="btn btn-outline-secondary" type="button" id="dateIcon">
+                        <i class="bi bi-calendar"></i> <!-- Bootstrap Icon for Calendar -->
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-auto">
+                <label for="unitFilter" class="form-label">Unit</label>
+                <select name="unit" id="unitFilter" class="form-control">
+                    <option value="">All Units</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}" {% if request.GET.unit == unit.id|stringformat:"s" %}selected{% endif %}>
+                        {{ unit.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12 col-md-auto d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+    <div class="table-container">
+        <!-- Responsive Table -->
+        <div class="table-responsive mt-3">
+            <table class="table table-bordered table-striped text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Manager</th>
+                        <th>Unit</th>
+                        <th>Date</th>
+                        <th>Generated At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ report.manager.username }}</td>
+                        <td>{{ report.unit.name }}</td>
+                        <td>{{ report.date }}</td>
+                        <td>{{ report.generated_at }}</td>
+                        <td>
+                            <a href="{% url 'admin_report_detail' report.id %}" class="btn btn-primary btn-sm">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-muted">No reports available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let today = new Date().toISOString().split('T')[0];
+
+        let availableDates = {{ available_dates|safe }};  // Django list -> JavaScript array
+
+        $("#dateFilter").datepicker({
+            format: "yyyy-mm-dd",
+            autoclose: true,
+            todayHighlight: true,
+            clearBtn: true,  // Enable Clear button
+            //showOnFocus: false,
+            templates: {
+                leftArrow: '«',
+                rightArrow: '»'
+            },
+            beforeShowDay: function (date) {
+                let dateString =  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                if (availableDates.includes(dateString)) {
+                    return { classes: "highlight-date", tooltip: "Reports Available" };
+                }
+                return {};
+            }
+        });
+
+        // Set default value to today if no date is selected
+        //if (!document.getElementById("dateFilter").value) {
+        //    $("#dateFilter").datepicker("setDate", today);
+        //}
+
+        // Show datepicker when clicking the icon
+        $("#dateIcon").click(function () {
+            $("#dateFilter").datepicker("show");
+        });
+    });
+</script>
+
+
+{% comment %} <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let today = new Date().toISOString().split('T')[0];
+        let dateInput = document.getElementById("dateFilter");
+
+        if (!dateInput.value) {
+            dateInput.value = today;
+        }
+    });
+</script> {% endcomment %}
+{% endblock %}

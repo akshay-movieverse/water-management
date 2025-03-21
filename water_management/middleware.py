@@ -20,11 +20,11 @@ class UserTypeRestrictionMiddleware:
             path = request.path
 
             # Restrict access for admin users
-            if hasattr(request.user, 'is_admin') and request.user.is_admin and path.startswith('/manager/'):
+            if hasattr(request.user, 'is_admin') and request.user.is_admin and path.startswith('/managerpanel/'):
                 return redirect(reverse('admin_dashboard'))
 
             # Restrict access for manager users
-            if hasattr(request.user, 'is_manager') and request.user.is_manager and path.startswith('/admin/'):
+            if hasattr(request.user, 'is_manager') and request.user.is_manager and path.startswith('/adminpanel/'):
                 return redirect(reverse('manager_dashboard'))
 
         return self.get_response(request)

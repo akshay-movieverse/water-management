@@ -1,0 +1,86 @@
+{% extends 'manager_dashboard/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Fill Daily Readings for {{ date }}</h2>
+
+<!-- Display error messages -->
+{% if messages %}
+<div class="alert alert-danger">
+    {% for message in messages %}
+    <p>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        {% for data in subunit_data %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ data.subunit.name }}</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Opening</th>
+                                <th>Closing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Amount</td>
+                                <td>{{ data.opening_amount }}</td>
+                                <td>
+                                    <input type="number" class="form-control closing-amount" 
+                                           data-subunit-id="{{ data.subunit.id }}" 
+                                           data-opening-amount="{{ data.opening_amount }}" 
+                                           id="closing_amount_{{ data.subunit.id }}" 
+                                           name="closing_amount_{{ data.subunit.id }}" 
+                                           value="{{ data.closing_amount }}" 
+                                           min="0" step="1">
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Closing amount cannot be less than opening amount.
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Dispenser</td>
+                                <td>{{ data.opening_dispenser }}</td>
+                                <td>
+                                    <input type="number" class="form-control closing-dispenser" 
+                                           data-subunit-id="{{ data.subunit.id }}" 
+                                           data-opening-dispenser="{{ data.opening_dispenser }}" 
+                                           id="closing_dispenser_{{ data.subunit.id }}" 
+                                           name="closing_dispenser_{{ data.subunit.id }}" 
+                                           value="{{ data.closing_dispenser }}" 
+                                           min="0" step="1">
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Closing dispenser cannot be less than opening dispenser.
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Card Footer for Calculated Values -->
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col">
+                            <strong>Amount (₹):</strong> 
+                            <span id="amount_rs_{{ data.subunit.id }}">0</span>
+                        </div>
+                        <div class="col">
+                            <strong>Water Supply:</strong> 
+                            <span id="water_supply_{{ data.subunit.id }}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-success">Save and Proceed to Attendance</button>
+</form>
+{% endblock %}

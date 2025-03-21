@@ -68,3 +68,13 @@ class CustomUser(AbstractUser, SoftDeleteModel):
         if self.is_admin and self.is_manager:
             raise ValueError("User cannot be both Admin and Manager.")
         super().save(*args, **kwargs)
+
+
+class ReportGeneration(models.Model):
+    manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
+    date = models.DateField()
+    generated_at = models.DateTimeField(auto_now=True)  # Updates on every save
+
+    def __str__(self):
+        return f"Report by {self.manager.username} on {self.date}"

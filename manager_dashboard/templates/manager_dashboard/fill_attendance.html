@@ -1,0 +1,50 @@
+{% extends 'manager_dashboard/base.html' %}
+{% load custom_filters %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4 text-center">Fill Attendance for {{ date }}</h2>
+
+    <div class="d-flex justify-content-center">
+        <div class="table-responsive" style="max-width: 800px; width: 100%;">
+            <form method="post">
+                {% csrf_token %}
+                <table class="table table-bordered text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Worker Name</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for worker in workers %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ worker.name }}</td>
+                            <td>
+                                <input type="radio" class="form-check-input" 
+                                       name="worker_{{ worker.id }}" value="present" 
+                                       {% if attendance_records|get_item:worker.id %} checked {% endif %} required>
+                            </td>
+                            <td>
+                                <input type="radio" class="form-check-input" 
+                                       name="worker_{{ worker.id }}" value="absent" 
+                                       {% if attendance_records|get_item:worker.id == False %} checked {% endif %} required>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No workers found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <button type="submit" class="btn btn-success w-100 mt-3">Save and Proceed to Expenses</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

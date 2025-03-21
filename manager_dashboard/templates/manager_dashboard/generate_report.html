@@ -1,0 +1,60 @@
+{% extends "manager_dashboard/base.html" %}
+
+{% block content %}
+<h2>Daily Report for {{ date }}</h2>
+
+<h3>Daily Readings</h3>
+<table>
+    <tr>
+        <th>Subunit</th>
+        <th>Opening Amount</th>
+        <th>Closing Amount</th>
+        <th>Opening Dispenser</th>
+        <th>Closing Dispenser</th>
+    </tr>
+    {% for reading in subunit_readings %}
+    <tr>
+        <td>{{ reading.subunit.name }}</td>
+        <td>{{ reading.amount_opening_reading }}</td>
+        <td>{{ reading.amount_closing_reading }}</td>
+        <td>{{ reading.dispenser_opening_reading }}</td>
+        <td>{{ reading.dispenser_closing_reading }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Attendance</h3>
+<table>
+    <tr>
+        <th>Worker</th>
+        <th>Status</th>
+    </tr>
+    {% for att in attendance %}
+    <tr>
+        <td>{{ att.worker.name }}</td>
+        <td>{% if att.is_present %}Present{% else %}Absent{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Expenses</h3>
+<table>
+    <tr>
+        <th>Category</th>
+        <th>Amount</th>
+    </tr>
+    {% for expense in expenses %}
+    <tr>
+        <td>{{ expense.category|title }}</td>
+        <td>{{ expense.amount }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Summary</h3>
+<p>Total Income: {{ total_income }}</p>
+<p>Total Expenses: {{ total_expense }}</p>
+<p>Cash in Hand: {{ cash_in_hand }}</p>
+
+<a href="{% url 'manager_dashboard' %}">Back to Dashboard</a>
+{% endblock %}

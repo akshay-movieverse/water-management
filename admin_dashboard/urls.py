@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, edit_unit, unit_list, unit_detail, delete_unit,
+    add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, edit_unit, report_detail, report_list, unit_list, unit_detail, delete_unit,
     delete_subunit, add_manager, manager_list, delete_manager
 )
 
@@ -15,6 +15,9 @@ urlpatterns = [
     path('units/<int:unit_id>/delete/', delete_unit, name='delete_unit'),  # ✅ Added Delete Unit URL
     path('subunit/<int:subunit_id>/delete/', delete_subunit, name='delete_subunit'),
     path('recharge/<int:recharge_unit_id>/delete/', delete_recharge_unit, name='delete_recharge_unit'),
+
+    path('reports/', report_list, name='admin_reports'),
+    path('reports/<int:report_id>/', report_detail, name='admin_report_detail'),
 
 ]
 

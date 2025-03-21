@@ -1,0 +1,17 @@
+{% extends 'manager_dashboard/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" >
+    <div class="card p-4 shadow-lg" style="max-width: 500px; width: 100%;">
+        <h2 class="mb-4 text-center">Edit Worker</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Worker Name</label>
+                <input type="text" class="form-control" name="name" value="{{ worker.name }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

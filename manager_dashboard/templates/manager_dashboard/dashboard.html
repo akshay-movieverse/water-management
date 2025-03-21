@@ -1,0 +1,26 @@
+{% extends 'manager_dashboard/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Manager Dashboard</h2>
+<!-- Display error messages -->
+{% if messages %}
+<div class="alert alert-danger">
+    {% for message in messages %}
+    <p>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row">
+    {% for date in allowed_dates %}
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ date }}</h5>
+                <a href="{% url 'fill_daily_readings' date=date %}" class="btn btn-primary">Fill Readings</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

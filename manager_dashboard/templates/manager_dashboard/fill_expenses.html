@@ -1,0 +1,60 @@
+{% extends 'manager_dashboard/base.html' %}
+{% load custom_filters %}  <!-- Load the custom filters -->
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4 text-center">Fill Expenses for {{ date }}</h2>
+
+    <div class="d-flex justify-content-center">
+        <div class="table-responsive" style="max-width: 800px; width: 100%;">
+            <form method="post">
+                {% csrf_token %}
+                <table class="table table-bordered text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Expense Category</th>
+                            <th>Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ category|title }}</td>
+                            <td>
+                                <input type="number" class="form-control text-center expense-input" 
+                                name="{{ category }}" min="0" step="1" 
+                                value="{{ expense_dict|get_value:category }}" 
+                                placeholder="Enter amount">
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No expense categories available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-success mb-4">Save and Generate Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".expense-input").forEach(input => {
+            input.addEventListener("focus", function () {
+                if (this.value === "0") this.value = "";  // Remove default 0 when focused
+            });
+            input.addEventListener("blur", function () {
+                if (this.value === "") this.value = "0";  // Set default 0 if left empty
+            });
+        });
+    });
+</script>
+{% endblock %}

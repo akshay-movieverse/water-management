@@ -1,0 +1,183 @@
+{% extends 'manager_dashboard/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4 px-1">
+    <div class="invoice-card p-4 shadow-lg bg-white rounded">
+
+        <!-- Header & Summary Row (Mobile Responsive) -->
+        <div class="row mb-4 text-center text-md-start">
+            <!-- Left: Invoice Heading -->
+            <div class="col-md-4 mb-3 mb-md-0">
+                <h2 class="fw-bold">Invoice</h2>
+                <p class="text-muted">Date: {{ date }}</p>
+            </div>
+
+            <!-- Center: Company Name -->
+            <div class="col-md-4 mb-3 mb-md-0 text-center">
+                <h2 class="fw-bold">NEER AMRIT ENTERPRISES LLP</h2>
+                <p class="text-muted fw-bold">{{ unit.name }}</p>
+            </div>
+
+            <!-- Right: Summary Table -->
+            <div class="col-md-4 text-md-end">
+                <div class="summary-table border p-2 rounded">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-light">
+                            <tr><th colspan="2">Summary</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Total Income</strong></td><td>₹{{ total_income }}</td></tr>
+                            <tr><td><strong>Total Expense</strong></td><td>₹{{ total_expense }}</td></tr>
+                            <tr><td><strong>Cash in Hand</strong></td><td>₹{{ cash_in_hand }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subunit Readings Table -->
+        <h4 class="mb-3">Subunit Readings</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Subunit Name</th>
+                        <th>Opening Reading</th>
+                        <th>Closing Reading</th>
+                        <th>Total Amount (₹)</th>
+                        <th>Dispenser Opening</th>
+                        <th>Dispenser Closing</th>
+                        <th>Water Supply</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reading in subunit_readings %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ reading.subunit.name }}</td>
+                        <td>{{ reading.amount_opening_reading }}</td>
+                        <td>{{ reading.amount_closing_reading|default:"-" }}</td>
+                        <td>₹{{ reading.amount_rs }}</td>
+                        <td>{{ reading.dispenser_opening_reading }}</td>
+                        <td>{{ reading.dispenser_closing_reading|default:"-" }}</td>
+                        <td>{{ reading.water_supply }}</td>
+                    </tr>
+                    {% endfor %}
+                    <!-- Total Row -->
+                    <tr class="table-info">
+                        <td colspan="4"><strong>Total</strong></td>
+                        <td><strong>₹{{ total_income }}</strong></td>
+                        <td colspan="2"><strong>Water Supply</strong></td>
+                        <td><strong>{{ total_water_supply }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Worker Attendance & Expenses in Two Columns -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h4 class="mb-3">Worker Attendance</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Worker Name</th>
+                                <th>Attendance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in attendance %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ record.worker.name }}</td>
+                                <td>
+                                    {% if record.is_present %}
+                                        <span class="text-success fw-bold">P</span>
+                                    {% else %}
+                                        <span class="text-danger fw-bold">A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3">No attendance records available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h4 class="mb-3">Expenses</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Category</th>
+                                <th>Amount (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ expense.category|title }}</td>
+                                <td>₹{{ expense.amount|default:0 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3">No expenses recorded</td>
+                            </tr>
+                            {% endfor %}
+                            <!-- Total Expenses Row -->
+                            <tr class="table-warning">
+                                <td colspan="2"><strong>Total Expense</strong></td>
+                                <td><strong>₹{{ total_expense }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Print Button -->
+        <div class="text-center mt-4">
+            <button class="btn btn-primary" onclick="window.print()">Print</button>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Responsive Styles -->
+<style>
+    @media (max-width: 768px) {
+        /* Center the summary table */
+        .summary-table {
+            margin: auto;
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .invoice-card, .invoice-card * {
+            visibility: visible;
+        }
+        .invoice-card {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+    }
+</style>
+
+{% endblock %}
