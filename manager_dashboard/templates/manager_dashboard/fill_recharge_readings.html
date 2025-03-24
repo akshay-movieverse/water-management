@@ -1,0 +1,133 @@
+{% extends 'manager_dashboard/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Fill Recharge Unit Readings for {{ date }}</h2>
+
+{% if messages %}
+<div class="alert alert-danger">
+    {% for message in messages %}
+    <p>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        {% for data in recharge_unit_data %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ data.recharge_unit.name }}</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Opening</th>
+                                <th>Closing</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Amount</td>
+                                <td>{{ data.opening }}</td>
+                                <td>
+                                    <input type="number" 
+                                           class="form-control closing-reading" 
+                                           data-recharge-unit-id="{{ data.recharge_unit.id }}" 
+                                           data-opening="{{ data.opening }}" 
+                                           id="closing_{{ data.recharge_unit.id }}" 
+                                           name="closing_{{ data.recharge_unit.id }}" 
+                                           value="{{ data.closing|default_if_none:'' }}" 
+                                           min="0" 
+                                           max="{{ data.opening }}" 
+                                           step="1">
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Closing cannot exceed opening.
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <strong>Amount (₹):</strong> 
+                    <span id="amount_rs_{{ data.recharge_unit.id }}">0</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-success">Save and Proceed</button>
+</form>
+
+<script>
+    // Recharge Unit Readings Validation
+document.addEventListener('DOMContentLoaded', function() {
+    function calculateAmount(rechargeUnitId) {
+        const input = document.querySelector(`#closing_${rechargeUnitId}`);
+        const opening = parseInt(input.dataset.opening) || 0;
+        const closing = parseInt(input.value) || 0;
+        const amount = opening - closing;
+        document.querySelector(`#amount_rs_${rechargeUnitId}`).textContent = amount;
+        return amount;
+    }
+
+    function validateInput(input) {
+        const opening = parseInt(input.dataset.opening) || 0;
+        const closing = parseInt(input.value) || 0;
+        if (closing > opening) {
+            input.classList.add('is-invalid');
+            input.nextElementSibling.style.display = 'block';
+            return false;
+        } else {
+            input.classList.remove('is-invalid');
+            input.nextElementSibling.style.display = 'none';
+            return true;
+        }
+    }
+
+    function updateCardShadow(rechargeUnitId) {
+        const input = document.querySelector(`#closing_${rechargeUnitId}`);
+        const card = input.closest('.card');
+        const isValid = validateInput(input);
+        if (input.value.trim() !== '' && isValid) {
+            card.style.boxShadow = '0 0 0 .25rem rgba(0, 200, 0, 0.3)';
+        } else {
+            card.style.boxShadow = '';
+        }
+    }
+
+    document.querySelectorAll('.closing-reading').forEach(input => {
+        input.addEventListener('input', function() {
+            const rechargeUnitId = this.dataset.rechargeUnitId;
+            calculateAmount(rechargeUnitId);
+            validateInput(this);
+            updateCardShadow(rechargeUnitId);
+        });
+    });
+
+    // Initial validation and calculation
+    document.querySelectorAll('.closing-reading').forEach(input => {
+        const rechargeUnitId = input.dataset.rechargeUnitId;
+        calculateAmount(rechargeUnitId);
+        updateCardShadow(rechargeUnitId);
+    });
+
+    // Form submission validation
+    document.querySelector('form').addEventListener('submit', function(event) {
+        let isValid = true;
+        document.querySelectorAll('.closing-reading').forEach(input => {
+            if (!validateInput(input)) {
+                isValid = false;
+            }
+        });
+
+        if (!isValid) {
+            event.preventDefault();
+            alert('Please correct the errors before submitting.');
+        }
+    });
+});
+</script>
+{% endblock %}

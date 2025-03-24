@@ -1,8 +1,8 @@
 {% extends 'manager_dashboard/base.html' %}
 
 {% block content %}
-<h2 class="mb-4">Fill Daily Readings for {{ date }}</h2>
-
+<h2 class="mb-2">Fill <b>SubUnit</b> Readings</h2>
+<h3>{{ date }}</h3>
 <!-- Display error messages -->
 {% if messages %}
 <div class="alert alert-danger">
@@ -81,6 +81,6 @@
         </div>
         {% endfor %}
     </div>
-    <button type="submit" class="btn btn-success">Save and Proceed to Attendance</button>
+    <button type="submit" class="btn btn-success">Save and Proceed to Recharge Unit</button>
 </form>
 {% endblock %}

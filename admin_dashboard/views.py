@@ -1,9 +1,10 @@
 
+from datetime import timedelta
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from .models import RechargeUnit, Unit, Subunit, CustomUser
+from .models import RechargeUnit, ReportGeneration, Unit, Subunit, CustomUser
 
-
+from django.utils import timezone
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
@@ -15,7 +16,86 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def admin_dashboard(request):
-    return render(request, 'admin_dashboard/dashboard.html')
+    # Get the current date and start of the week (Monday)
+    today = timezone.now().date()
+    # Find the Monday of current week
+    start_of_week = today - timedelta(days=today.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+    
+    # Get all managers
+    managers = CustomUser.objects.filter(is_manager=True, is_deleted=False).prefetch_related('unit')
+    
+    # Prepare manager data with report statistics
+    managers_data = []
+    
+    for manager in managers:
+        # Get reports for this week
+        week_reports = ReportGeneration.objects.filter(
+            manager=manager,
+            date__gte=start_of_week,
+            date__lte=end_of_week
+        )
+        
+        # Count reports by day of week
+        # reports_by_day = {}
+        # for i in range(7):
+        #     day_date = start_of_week + timedelta(days=i)
+        #     reports_by_day[i] = week_reports.filter(date=day_date).count()
+        reports_by_day = {}
+        subunit_counts_by_day = {}
+        #print(manager.unit.subunit_set.all().count())
+        for i in range(7):
+            day_date = start_of_week + timedelta(days=i)
+            reports_on_day = week_reports.filter(date=day_date)
+            # Count the reports generated on this day
+            reports_by_day[i] = reports_on_day.count()
+            
+            if reports_on_day.exists():
+                # Count the number of unique subunits included in reports
+                subunits_on_day = DailyReading.objects.filter(
+                    date=day_date,
+                    subunit__unit=manager.unit  # Filter by the manager's unit
+                ).values('subunit').distinct().count()
+            else:
+                subunits_on_day = 0
+                
+            subunit_counts_by_day[i] = subunits_on_day    
+
+        # Get latest report generation time
+        last_report = ReportGeneration.objects.filter(manager=manager).order_by('-generated_at').first()
+        
+        # Calculate weekly submission percentage (if submitted every day = 100%)
+        days_with_submissions = sum(1 for count in reports_by_day.values() if count > 0)
+        weekly_submission_percentage = round((days_with_submissions / 7) * 100)
+        
+        # Add manager data
+        manager_data = {
+            'username': manager.username,
+            'get_full_name': f"{manager.first_name} {manager.last_name}" if manager.first_name else manager.username,
+            'unit': manager.unit,
+            'is_online': (timezone.now() - manager.last_login).total_seconds() < 300 if manager.last_login else False,
+            'last_login': manager.last_login,
+            'weekly_submission_percentage': weekly_submission_percentage,
+            'reports_monday': subunit_counts_by_day[0],
+            'reports_tuesday': subunit_counts_by_day[1],
+            'reports_wednesday': subunit_counts_by_day[2],
+            'reports_thursday': subunit_counts_by_day[3],
+            'reports_friday': subunit_counts_by_day[4],
+            'reports_saturday': subunit_counts_by_day[5],
+            'reports_sunday': subunit_counts_by_day[6],
+            'reports_total': manager.unit.subunit_set.all().count(), #sum(reports_by_day.values()),
+            'last_report_generated': last_report.generated_at if last_report else None,
+            'week_start': start_of_week,
+            'week_end': today  # Using today instead of end_of_week as you requested
+        }
+        
+        managers_data.append(manager_data)
+    
+    context = {
+        'managers': managers_data
+    }
+    
+    return render(request, 'admin_dashboard/dashboard.html', context)
 
 @login_required
 def unit_list(request):

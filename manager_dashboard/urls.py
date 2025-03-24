@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    add_worker, delete_worker, edit_worker, manager_dashboard, fill_daily_readings, fill_attendance, 
+    add_worker, delete_worker, edit_worker, fill_recharge_readings, manager_dashboard, fill_daily_readings, fill_attendance, 
     fill_expenses, generate_report, workers_list
 )
 
@@ -11,6 +11,8 @@ urlpatterns = [
     path('fill-expenses/<str:date>/', fill_expenses, name='fill_expenses'),
     path('generate-report/<str:date>/', generate_report, name='generate_report'),
     
+    path('fill-recharge-readings/<str:date>/', fill_recharge_readings, name='fill_recharge_readings'),
+
     # Add Worker
     path('add-worker/', add_worker, name='add_worker'),
     

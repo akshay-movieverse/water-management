@@ -1,5 +1,306 @@
 {% extends "admin_dashboard/base.html" %}
+
+{% load static %}
+
 {% block content %}
-    <h2>Welcome to Admin Dashboard</h2>
-    <p>Use the sidebar to navigate.</p>
+
+<style>
+{% comment %}     
+/* Sidebar styling */
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #343a40;
+    color: white;
+    padding-top: 20px;
+    transition: all 0.3s;
+    z-index: 1000;
+}
+
+.sidebar-header {
+    padding: 0 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+}
+
+.sidebar .nav-link {
+    color: rgba(255,255,255,0.75);
+    padding: 10px 15px;
+    margin: 2px 0;
+    display: flex;
+    align-items: center;
+    transition: 0.3s;
+}
+
+.sidebar .nav-link i {
+    margin-right: 10px;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: white;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+/* Main content */
+.main-content {
+    margin-left: 250px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+/* Collapsed sidebar */
+.sidebar-collapsed .sidebar {
+    width: 60px;
+}
+
+.sidebar-collapsed .sidebar .nav-link span,
+.sidebar-collapsed .sidebar-header h3 {
+    display: none;
+}
+
+.sidebar-collapsed .main-content {
+    margin-left: 60px;
+} {% endcomment %}
+
+/* Avatar placeholder */
+.avatar-circle {
+    position: relative;
+}
+
+.avatar-placeholder {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+/* Progress bar custom styling */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    {% comment %} .sidebar {
+        left: -250px;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .sidebar-active .sidebar {
+        left: 0;
+    }
+    
+    #mobileSidebarToggle {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1001;
+    } {% endcomment %}
+}
+
+/* Table styling */
+.table {
+    font-size: 0.875rem;
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.table thead {
+    background-color: #f8f9fa;
+}
+
+/* Day badges styling */
+.days-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.days-row {
+    display: flex;
+    gap: 8px;
+}
+
+.day-badge {
+    color:black;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f0f0;
+    position: relative;
+    font-size: 0.75rem;
+}
+
+.day-badge.active {
+    background-color: rgba(13, 110, 253, 0.2);
+    border: 1px solid rgba(13, 110, 253, 0.5);
+    color:rgb(255, 255, 255);
+}
+
+.day-letter {
+    font-weight: bold;
+    font-size: 0.65rem;
+    line-height: 1;
+}
+
+.day-number {
+    font-size: 0.75rem;
+    line-height: 1;
+}
+.d-flex{
+    margin-top: 0px;
+}
+
+@media (max-width: 768px) {
+    .table-container {
+        margin-left: -25px;
+        margin-right: -25px;
+        width: calc(100% + 50px);
+    }
+}
+</style>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Manager Dashboard</h1>
+            <p class="text-muted">Overview of manager report submissions and activity</p>
+        </div>
+    </div>
+
+    {% comment %} <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0">Managers Report Submission</h5>
+        </div>
+        <div class="card-body"> {% endcomment %}
+            <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle" style="background-color: #3f60a7;">
+                    <thead>
+                        <tr>
+                            <th scope="col">Manager</th>
+                            <th scope="col">Unit</th>
+                            <th scope="col">Weekly Submission</th>
+                            <th scope="col">Weekly Reports</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Last Report At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for manager in managers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center mt-0">
+                                    <div class="avatar-circle me-3">
+                                        <div class="avatar-placeholder rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                            {{ manager.get_full_name|slice:":1"|upper }}
+                                        </div>
+                                        {% if manager.is_online %}
+                                            <span class="position-absolute bottom-0 end-0 p-1 bg-success rounded-circle" style="width: 12px; height: 12px;"></span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ manager.get_full_name|default:manager.username }}</h6>
+                                        <p class="text-light small mb-0">{{ manager.last_login|timesince }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ manager.unit.name }}</span>
+                            </td>
+                            <td style="width: 20%;">
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small>{{ manager.weekly_submission_percentage }}%</small>
+                                        <small>{{ manager.week_start|date:"M d, Y" }} - {{ manager.week_end|date:"M d, Y" }}</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar {% if manager.weekly_submission_percentage >= 75 %}bg-success{% elif manager.weekly_submission_percentage >= 50 %}bg-info{% elif manager.weekly_submission_percentage >= 25 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ manager.weekly_submission_percentage }}%" 
+                                             aria-valuenow="{{ manager.weekly_submission_percentage }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex">
+                                    <div class="days-grid me-2">
+                                        <div class="days-row">
+                                            <span class="day-badge {% if manager.reports_monday > 0 %}active{% endif %}">
+                                                <span class="day-letter">M</span>
+                                                <span class="day-number">{{ manager.reports_monday }}</span>
+                                            </span>
+                                            <span class="day-badge {% if manager.reports_tuesday > 0 %}active{% endif %}">
+                                                <span class="day-letter">T</span>
+                                                <span class="day-number">{{ manager.reports_tuesday }}</span>
+                                            </span>
+                                            <span class="day-badge {% if manager.reports_wednesday > 0 %}active{% endif %}">
+                                                <span class="day-letter">W</span>
+                                                <span class="day-number">{{ manager.reports_wednesday }}</span>
+                                            </span>
+
+                                        </div>
+                                        <div class="days-row">
+                                            <span class="day-badge {% if manager.reports_thursday > 0 %}active{% endif %}">
+                                                <span class="day-letter">T</span>
+                                                <span class="day-number">{{ manager.reports_thursday }}</span>
+                                            </span>
+                                            <span class="day-badge {% if manager.reports_friday > 0 %}active{% endif %}">
+                                                <span class="day-letter">F</span>
+                                                <span class="day-number">{{ manager.reports_friday }}</span>
+                                            </span>
+                                            <span class="day-badge {% if manager.reports_saturday > 0 %}active{% endif %}">
+                                                <span class="day-letter">S</span>
+                                                <span class="day-number">{{ manager.reports_saturday }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex;flex-direction: column;justify-content: center;">
+                                        <span class="day-badge {% if manager.reports_sunday > 0 %}active{% endif %}">
+                                            <span class="day-letter">S</span>
+                                            <span class="day-number">{{ manager.reports_sunday }}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ manager.reports_total }}</span>
+                            </td>
+                            <td>
+                                <span class="text-light ">{{ manager.last_report_generated|date:"M d, Y H:i"|default:"No reports" }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-muted">No managers found</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+</div>
+{% comment %}</div> </div>  {% endcomment %}
 {% endblock %}

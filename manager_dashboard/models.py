@@ -1,6 +1,6 @@
 from django.db import models
 
-from admin_dashboard.models import SoftDeleteModel, Subunit, Unit
+from admin_dashboard.models import RechargeUnit, SoftDeleteModel, Subunit, Unit
 
 # Create your models here.
 class Worker(SoftDeleteModel):
@@ -55,3 +55,39 @@ class Expense(models.Model):
     amount = models.IntegerField(null=True, blank=True)
 
 
+class RechargeUnitDailyReading(models.Model):
+    date = models.DateField()
+    recharge_unit = models.ForeignKey(RechargeUnit, on_delete=models.CASCADE)
+    opening_reading = models.IntegerField(default=0)
+    closing_reading = models.IntegerField(null=True, blank=True)
+
+    def amount_rs(self):
+        if self.closing_reading is not None:
+            return self.opening_reading - self.closing_reading
+        return 0
+    
+
+class MonthlyOpeningSub(models.Model):
+    subunit = models.ForeignKey(Subunit, on_delete=models.CASCADE)
+    date = models.DateField()
+    amount_opening = models.IntegerField(default=0)
+    dispenser_opening = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('subunit', 'date')  # Prevent duplicate entries
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.subunit} - {self.date}"
+    
+class RechargeUnitMonthlyOpening(models.Model):
+    recharge_unit = models.ForeignKey(RechargeUnit, on_delete=models.CASCADE)
+    date = models.DateField()
+    opening_reading = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('recharge_unit', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.recharge_unit} - {self.date}"
