@@ -27,7 +27,7 @@
 
             <div class="col-md-4 text-md-end">
                 <div class="summary-table border p-2 rounded">
-                    <table class="table table-sm table-bordered text-center">
+                    {% comment %} <table class="table table-sm table-bordered text-center">
                         <thead class="table-light">
                             <tr><th colspan="2">Summary</th></tr>
                         </thead>
@@ -35,6 +35,34 @@
                             <tr><td><strong>Total Income</strong></td><td>₹{{ total_income }}</td></tr>
                             <tr><td><strong>Total Expense</strong></td><td>₹{{ total_expense }}</td></tr>
                             <tr><td><strong>Cash in Hand</strong></td><td>₹{{ cash_in_hand }}</td></tr>
+                        </tbody>
+                    </table> {% endcomment %}
+
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-light">
+                            <tr><th colspan="2">Summary</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Subunit Income</strong></td>
+                                <td>₹{{ subunit_income }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Recharge Income</strong></td>
+                                <td>₹{{ recharge_income }}</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td><strong>Total Income</strong></td>
+                                <td>₹{{ total_income }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Expense</strong></td>
+                                <td>₹{{ total_expense }}</td>
+                            </tr>
+                            <tr class="table-success">
+                                <td><strong>Cash in Hand</strong></td>
+                                <td>₹{{ cash_in_hand }}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -69,15 +97,59 @@
                         <td>{{ reading.water_supply }}</td>
                     </tr>
                     {% endfor %}
-                    <tr class="table-info">
+                    {% comment %} <tr class="table-info">
                         <td colspan="4"><strong>Total</strong></td>
                         <td><strong>₹{{ total_income }}</strong></td>
+                        <td colspan="2"><strong>Water Supply</strong></td>
+                        <td><strong>{{ total_water_supply }}</strong></td>
+                    </tr> {% endcomment %}
+                    <tr class="table-info">
+                        <td colspan="4"><strong>Subunit Total</strong></td>
+                        <td><strong>₹{{ subunit_income }}</strong></td>
                         <td colspan="2"><strong>Water Supply</strong></td>
                         <td><strong>{{ total_water_supply }}</strong></td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+
+        <!-- Recharge Unit Readings Table -->
+        <h4 class="mb-3 mt-4">Recharge Unit Readings</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Recharge Unit</th>
+                        <th>Opening Reading</th>
+                        <th>Closing Reading</th>
+                        <th>Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reading in recharge_readings %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ reading.recharge_unit.name }}</td>
+                        <td>{{ reading.opening_reading }}</td>
+                        <td>{{ reading.closing_reading|default:"-" }}</td>
+                        <td>₹{{ reading.amount_rs }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">No recharge unit readings available</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-info">
+                        <td colspan="4"><strong>Total Recharge Amount</strong></td>
+                        <td><strong>₹{{ recharge_income }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+
 
         <div class="row mt-4">
             <div class="col-md-6">

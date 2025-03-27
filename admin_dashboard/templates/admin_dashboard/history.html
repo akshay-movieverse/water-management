@@ -1,0 +1,142 @@
+
+{% extends "admin_dashboard/base.html" %}
+
+{% load static %}
+
+
+
+
+
+{% block content %}
+
+{% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+<style>
+
+    .accordion-header .btn-danger {
+        margin-right: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    </style>
+
+
+
+<div class="container mt-4">
+    <h2 class="mb-4">Reset History</h2>
+    
+    <div class="accordion" id="historyAccordion">
+        {% for reset in page_obj %}
+        <div class="accordion-item">
+            <h2 class="accordion-header d-flex align-items-center">
+                <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false" 
+                    aria-controls="collapse{{ forloop.counter }}">
+                    {{ reset.date }} - {{ reset.get_action_type_display }}
+                    {% if reset.is_undo %}<span class="badge bg-warning ms-2">Undone</span>{% endif %}
+                </button>
+                                <!-- Delete Form -->
+                                <form method="post" action="{% url 'delete_reset' reset.id %}" 
+                                class="ms-2" onsubmit="return confirm('Are you sure you want to delete this entry?');">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-danger btn-sm">
+                                  <i class="bi bi-trash"></i>
+                              </button>
+                          </form>
+            </h2>
+            <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" 
+                data-bs-parent="#historyAccordion">
+                <div class="accordion-body">
+                    <!-- Subunits Section -->
+                    {% with subunits=reset.monthlyopeningsub_set.all %}
+                    {% if subunits %}
+                    <div class="mb-4">
+                        <h5 class="mb-3">Subunits</h5>
+                        {% for subunit in subunits %}
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ subunit.subunit.name }}</h6>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <span class="text-muted">Amount Opening:</span>
+                                        <span class="fw-bold">{{ subunit.amount_opening }}</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="text-muted">Dispenser Opening:</span>
+                                        <span class="fw-bold">{{ subunit.dispenser_opening }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <!-- Recharge Units Section -->
+                    {% with recharge_units=reset.rechargeunitmonthlyopening_set.all %}
+                    {% if recharge_units %}
+                    <div class="mt-4">
+                        <h5 class="mb-3">Recharge Units</h5>
+                        {% for ru in recharge_units %}
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ ru.recharge_unit.name }}</h6>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <span class="text-muted">Opening Reading:</span>
+                                        <span class="fw-bold">{{ ru.opening_reading }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-info">No history records found.</div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">&laquo; First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endblock %}

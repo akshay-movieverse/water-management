@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    FillRechargeView, GrandResetView, UnitRechargeUnitsView, UnitSubunitsView, add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, edit_unit, report_detail, report_list, reset_single_subunit, reset_unit_subunits, subunit_reset, unit_list, unit_detail, delete_unit,
+    FillRechargeView, GrandResetView, UnitRechargeUnitsView, UnitSubunitsView, add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, delete_reset, edit_unit, history_view, report_detail, report_list, reset_single_subunit, reset_unit_subunits, subunit_reset, unit_list, unit_detail, delete_unit,
     delete_subunit, add_manager, manager_list, delete_manager
 )
 
@@ -44,4 +44,8 @@ path('grand-reset/unit/<int:unit_id>/recharge-units/', UnitRechargeUnitsView.as_
 path('reset-subunit/<int:subunit_id>/', reset_single_subunit, name='reset_single_subunit'),
 
 path('reset-unit-subunits/<int:unit_id>/', reset_unit_subunits, name='reset_unit_subunits'),
+
+
+path('history/', history_view, name='history'),
+path('delete-reset/<int:reset_id>/', delete_reset, name='delete_reset'),
 ]

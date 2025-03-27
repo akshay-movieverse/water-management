@@ -214,6 +214,30 @@ from django.contrib.auth.hashers import make_password
 from .models import CustomUser, Unit
 
 
+############################################################################################history
+
+
+from django.core.paginator import Paginator
+
+def history_view(request):
+    history_list = ResetHistory.objects.order_by('-timestamp')
+    paginator = Paginator(history_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'admin_dashboard/history.html', {'page_obj': page_obj})
+
+
+
+
+def delete_reset(request, reset_id):
+    if request.method == 'POST':
+        reset = get_object_or_404(ResetHistory, id=reset_id)
+        reset.delete()
+        messages.success(request, 'History entry deleted successfully.')
+    return redirect('history')
+
+
+
 
 ############################################################################################
 @login_required
@@ -226,7 +250,7 @@ from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 @login_required
 def add_manager(request):
-    units = Unit.objects.filter(is_deleted=False)
+    units = Unit.objects.filter(is_deleted=False).exclude(customuser__isnull=False)
 
     if request.method == "POST":
         name = request.POST.get('name')
@@ -370,10 +394,15 @@ def report_detail(request, report_id):
     report = get_object_or_404(ReportGeneration, id=report_id)
     
     subunit_readings = DailyReading.objects.filter(date=report.date, subunit__unit=report.unit)
+    recharge_readings = RechargeUnitDailyReading.objects.filter(date=report.date, recharge_unit__unit=report.unit)
     expenses = Expense.objects.filter(date=report.date, unit=report.unit)
     attendance = Attendance.objects.filter(date=report.date, worker__unit=report.unit)
 
-    total_income = sum(r.amount_rs() for r in subunit_readings)
+    # Calculate totals
+    subunit_income = sum(r.amount_rs() for r in subunit_readings)
+    recharge_income = sum(r.amount_rs() for r in recharge_readings)
+    total_income = subunit_income + recharge_income
+    #total_income = sum(r.amount_rs() for r in subunit_readings)
     total_expense = sum(e.amount for e in expenses)
     total_water_supply = sum(r.water_supply() for r in subunit_readings)
     cash_in_hand = total_income - total_expense
@@ -382,8 +411,11 @@ def report_detail(request, report_id):
         'date': report.date,
         'report': report,
         'subunit_readings': subunit_readings,
+        'recharge_readings': recharge_readings,
         'expenses': expenses,
         'attendance': attendance,
+        'subunit_income': subunit_income,
+        'recharge_income': recharge_income,
         'total_income': total_income,
         'total_expense': total_expense,
         'total_water_supply': total_water_supply,
@@ -415,7 +447,7 @@ def subunit_reset(request):
         try:
             with transaction.atomic():
                 # Prevent duplicate resets on same date
-                if MonthlyOpeningSub.objects.filter(date=timezone.now().date()).exists():
+                if MonthlyOpeningSub.objects.filter(date=timezone.now().date(), reset_history__action_type="subunit_reset_plus").exists():
                     messages.warning(request, 'Subunits already reset today!')
                     return JsonResponse({'status': 'warning', 'message': 'Subunits already reset today!'})#redirect('grand_reset')
 
@@ -425,8 +457,13 @@ def subunit_reset(request):
                     date=timezone.now().date()
                 )
 
-                subunits = Subunit.objects.filter(is_deleted=False)
+                subunits = Subunit.objects.filter(
+                    is_deleted=False
+                ).exclude(
+                    monthlyopeningsub__reset_history__date=timezone.now().date()
+                )
                 if not subunits.exists():
+                    reset_history.delete()
                     messages.warning(request, 'No active subunits found to reset')
                     #return redirect('grand_reset')
                     return JsonResponse({'status': 'warning', 'message': 'No active subunits found to reset'})
@@ -455,6 +492,8 @@ def subunit_reset(request):
                 request, 
                 f'Error resetting subunits: {str(e)}'
             )
+            if reset_history:
+                reset_history.delete()
             return JsonResponse({'status': 'error', 'message': f'Error resetting subunits: {str(e)}'})
             #return redirect('grand_reset')
 
@@ -638,6 +677,7 @@ class UnitRechargeUnitsView(LoginRequiredMixin,TemplateView):
             if processed_count > 0:
                 messages.success(request, f"Successfully processed {processed_count} recharge units!")
             else:
+                reset_history.delete()
                 messages.warning(request, "No recharge units were processed")
                 #reset_history.delete()  # Clean up unused history
 
@@ -657,21 +697,30 @@ def reset_single_subunit(request, subunit_id):
             return JsonResponse({'status': 'error', 'message': f'{subunit.name} already reset today!'})
         
         with transaction.atomic():
-            reset_history = ResetHistory.objects.create(
-                action_type='subunit_reset',
-                date=today
-            )
-            MonthlyOpeningSub.objects.create(
-                subunit=subunit,
-                date=today,
-                amount_opening=0,
-                dispenser_opening=0,
-                reset_history=reset_history
-            )
+            try:
+                reset_history = ResetHistory.objects.create(
+                    action_type='subunit_reset',
+                    date=today
+                )
+                MonthlyOpeningSub.objects.create(
+                    subunit=subunit,
+                    date=today,
+                    amount_opening=0,
+                    dispenser_opening=0,
+                    reset_history=reset_history
+                )
+                
+                messages.success(request, f'{subunit.name} reset successfully!')
+                return JsonResponse({'status': 'success', 'message': f'{subunit.name} reset successfully!'})
         
-        messages.success(request, f'{subunit.name} reset successfully!')
-        return JsonResponse({'status': 'success', 'message': f'{subunit.name} reset successfully!'})
+            except Exception as e:
+                if reset_history:
+                    reset_history.delete()
+                messages.error(request, f'Error resetting {subunit.name}: {str(e)}')
+                return JsonResponse({'status': 'error', 'message': f'Error resetting {subunit.name}: {str(e)}'})
+                #return redirect('unit_subunits', unit_id=subunit.unit.id)
         
+
         #return redirect('unit_subunits', unit_id=subunit.unit.id)
     return redirect('grand_reset')
 
@@ -704,6 +753,7 @@ def reset_unit_subunits(request, unit_id):
             
             if created_count == 0:
                 messages.warning(request, 'All subunits already reset today!')
+                reset_history.delete()
                 return JsonResponse({'status': 'error', 'message': f'All subunits already reset today!'})
                 #reset_history.delete()
             else:

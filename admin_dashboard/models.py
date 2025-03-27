@@ -4,6 +4,10 @@ class SoftDeleteManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(is_deleted=False)
 
+class SubRecunitManager(SoftDeleteManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False,unit__is_deleted=False)  # Ensure related Unit is not deleted
+
 
 class SoftDeleteModel(models.Model):
     is_deleted = models.BooleanField(default=False)
@@ -27,14 +31,14 @@ class Unit(SoftDeleteModel):
 class Subunit(SoftDeleteModel):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    objects = SoftDeleteManager()  # Use generic manager
+    objects = SubRecunitManager()  # Use generic manager
     def __str__(self):
         return self.name
 
 class RechargeUnit(SoftDeleteModel):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="recharge_units")
     name = models.CharField(max_length=255)
-    objects = SoftDeleteManager()  # Use generic manager
+    objects = SubRecunitManager()  # Use generic manager
     def __str__(self):
         return self.name
     
@@ -55,7 +59,7 @@ class CustomUser(AbstractUser, SoftDeleteModel):
     
     email = models.EmailField(unique=True, blank=True, null=True)  # Optional Email
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # Optional Phone Number
-    unit = models.ForeignKey('Unit', null=True, blank=True, on_delete=models.SET_NULL)  # Assigned Unit for Manager
+    unit = models.OneToOneField('Unit', null=True, blank=True, on_delete=models.SET_NULL)  # Assigned Unit for Manager
 
     groups = models.ManyToManyField(
         Group,
