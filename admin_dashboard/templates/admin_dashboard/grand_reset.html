@@ -1,0 +1,103 @@
+{% extends "admin_dashboard/base.html" %}
+{% load static %}
+
+{% block content %}
+
+{% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<style>
+    @media (max-width: 768px) {
+        .table-container {
+            margin-left: -25px;
+            margin-right: -25px;
+            width: calc(100% + 50px);
+        }
+    }
+</style>
+<div class="container-fluid">
+    <h2 class="page-title my-4">Grand Reset</h2>
+    
+    <div class="row mb-4 g-2">
+        {% comment %} <div class="col-12 col-md-6">
+            <button class="btn btn-primary" onclick="location.href='{% url 'fill_recharge' %}'">
+                <i class="bi bi-plus-circle me-2"></i>Fill Recharge+
+            </button>
+        </div>
+        <div class="col-12 col-md-6 d-flex  justify-content-md-end">
+            <button class="btn btn-danger" onclick="confirmSubunitReset()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Subunit Reset+
+            </button>
+        </div> {% endcomment %}
+
+        <div class="col-12 d-flex" style="justify-content: space-between;">
+            <button class="btn btn-primary" onclick="location.href='{% url 'fill_recharge' %}'">
+                <i class="bi bi-plus-circle me-2"></i>Fill Recharge+
+            </button>
+            <button class="btn btn-danger" onclick="confirmSubunitReset()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Subunit Reset+
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Unit Name</th>
+                    <th>City</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in units %}
+                <tr>
+                    <td>{{ unit.name }}</td>
+                    <td>{{ unit.city }}</td>
+                    <td class="text-center">
+                        <div class="d-flex mt-0 gap-2 justify-content-center">
+                            <a href="{% url 'unit_recharge_units' unit.id %}" class="btn btn-primary text-light btn-sm">
+                                RechargeUnit
+                            </a>
+                            <a href="{% url 'unit_subunits' unit.id %}" class="btn btn-danger text-light btn-sm  me-2">
+                                SubUnit
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No units found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function confirmSubunitReset() {
+    if (confirm('Are you sure you want to reset all subunits? This action cannot be undone!')) {
+        fetch("{% url 'subunit_reset' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            credentials: 'include'  // Ensures cookies (including session) are sent
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

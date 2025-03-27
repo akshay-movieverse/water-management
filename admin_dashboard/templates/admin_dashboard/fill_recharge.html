@@ -1,0 +1,133 @@
+{% extends 'admin_dashboard/base.html' %}
+{% load static %}
+
+
+{% block content %}
+<style>
+    @media (max-width: 768px) {
+        .card {
+            margin-left: -25px;
+            margin-right: -25px;
+            width: calc(100% + 50px);
+        }
+    }
+
+    .unit-section {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 1.5rem;
+    }
+    
+    .unit-section:last-child {
+        border-bottom: none;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+</style>
+<div class="container-fluid">
+    <h2 class="my-4">Fill Recharge</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="card">
+            <div class="card-body">
+                {% for unit in units %}
+                <div class="unit-section mb-5">
+                    <h4 class="mb-3">{{ unit.name }} ({{ unit.city }})</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Recharge Unit</th>
+                                    <th>Opening Reading</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recharge_unit in unit.recharge_units_data %}
+                                <tr>
+                                    <td>Name: {{ recharge_unit.object.name }} 
+                                        <br>Last Bal:  <span class="text-primary">{{recharge_unit.last_closing}}</span>
+                                        <br>Current Amount:  <span class="calculated-opening text-success">0</span>
+                                    </td>
+                                    <td>
+                                        <input type="number" 
+                                               class="border-1 border border-dark form-control"
+                                               name="opening_{{ recharge_unit.object.id }}"
+                                               min="0" step="1" data-last-closing="{{ recharge_unit.last_closing }}"
+                                               >
+                                    </td>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="border-1 border border-dark form-check-input" 
+                                                   type="radio" 
+                                                   name="action_{{ recharge_unit.object.id }}" 
+                                                   id="add_{{ recharge_unit.object.id }}" 
+                                                   value="add" checked>
+                                            <label class="form-check-label" for="add_{{ recharge_unit.object.id }}">
+                                                Add
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="border-1 border border-dark form-check-input" 
+                                                   type="radio" 
+                                                   name="action_{{ recharge_unit.object.id }}" 
+                                                   id="reset_{{ recharge_unit.object.id }}" 
+                                                   value="reset">
+                                            <label class="form-check-label" for="reset_{{ recharge_unit.object.id }}">
+                                                Reset then Add
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <div class="text-end mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function updateCalculatedOpening(row) {
+            const input = row.querySelector('input[type="number"]');
+            const lastClosing = parseFloat(input.dataset.lastClosing) || 0;
+            const currentValue = parseFloat(input.value) || 0;
+            const action = row.querySelector('input[type="radio"]:checked').value;
+            const displaySpan = row.querySelector('.calculated-opening');
+            
+            displaySpan.textContent = action === 'add' 
+                ? (lastClosing + currentValue).toLocaleString()
+                : currentValue.toLocaleString();
+        }
+    
+        document.querySelectorAll('tr').forEach(row => {
+            const numberInput = row.querySelector('input[type="number"]');
+            const radios = row.querySelectorAll('input[type="radio"]');
+            
+            if (numberInput) {
+                numberInput.addEventListener('input', () => updateCalculatedOpening(row));
+                radios.forEach(radio => {
+                    radio.addEventListener('change', () => updateCalculatedOpening(row));
+                });
+                // Initial calculation
+                updateCalculatedOpening(row);
+            }
+        });
+    });
+    </script>
+{% endblock %}

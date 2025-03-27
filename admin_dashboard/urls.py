@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, edit_unit, report_detail, report_list, unit_list, unit_detail, delete_unit,
+    FillRechargeView, GrandResetView, UnitRechargeUnitsView, UnitSubunitsView, add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, edit_unit, report_detail, report_list, reset_single_subunit, reset_unit_subunits, subunit_reset, unit_list, unit_detail, delete_unit,
     delete_subunit, add_manager, manager_list, delete_manager
 )
 
@@ -30,4 +30,18 @@ urlpatterns += [  # Adding manager routes
     path('managers/add/', add_manager, name='add_manager'),
     path('managers/<int:manager_id>/edit/', edit_manager, name='edit_manager'),
     path('managers/<int:manager_id>/delete/', delete_manager, name='delete_manager'),
+]
+
+urlpatterns += [  # Adding manager routes
+path('grand-reset/', GrandResetView.as_view(), name='grand_reset'),
+path('subunit-reset/', subunit_reset, name='subunit_reset'),
+path('fill-recharge/', FillRechargeView.as_view(), name='fill_recharge'),
+
+
+# urls.py
+path('grand-reset/unit/<int:unit_id>/subunits/', UnitSubunitsView.as_view(), name='unit_subunits'),
+path('grand-reset/unit/<int:unit_id>/recharge-units/', UnitRechargeUnitsView.as_view(), name='unit_recharge_units'),
+path('reset-subunit/<int:subunit_id>/', reset_single_subunit, name='reset_single_subunit'),
+
+path('reset-unit-subunits/<int:unit_id>/', reset_unit_subunits, name='reset_unit_subunits'),
 ]

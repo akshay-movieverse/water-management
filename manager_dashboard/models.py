@@ -1,12 +1,12 @@
 from django.db import models
 
-from admin_dashboard.models import RechargeUnit, SoftDeleteModel, Subunit, Unit
+from admin_dashboard.models import RechargeUnit, ResetHistory, SoftDeleteManager, SoftDeleteModel, Subunit, Unit
 
 # Create your models here.
 class Worker(SoftDeleteModel):
     name = models.CharField(max_length=255)
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
-
+    objects = SoftDeleteManager()  # Use generic manager
     def __str__(self):
         return self.name
 
@@ -72,6 +72,7 @@ class MonthlyOpeningSub(models.Model):
     date = models.DateField()
     amount_opening = models.IntegerField(default=0)
     dispenser_opening = models.IntegerField(default=0)
+    reset_history = models.ForeignKey(ResetHistory, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         unique_together = ('subunit', 'date')  # Prevent duplicate entries
@@ -84,6 +85,7 @@ class RechargeUnitMonthlyOpening(models.Model):
     recharge_unit = models.ForeignKey(RechargeUnit, on_delete=models.CASCADE)
     date = models.DateField()
     opening_reading = models.IntegerField(default=0)
+    reset_history = models.ForeignKey(ResetHistory, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         unique_together = ('recharge_unit', 'date')

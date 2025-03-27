@@ -1,0 +1,100 @@
+{% extends 'admin_dashboard/base.html' %}
+{% load static %}
+
+{% block content %}
+
+{% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Subunit Reset - {{ unit.name }}</h2>
+        <button class="btn btn-danger" onclick="confirmResetAll()">
+            <i class="bi bi-arrow-clockwise"></i> Reset All
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Subunit Name</th>
+                            <th>Last Reset</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subunit in subunits %}
+                        <tr>
+                            <td>{{ subunit.name }}</td>
+                            <td>
+                                {% with subunit.monthlyopeningsub_set.last as last_reset %}
+                                    {{ last_reset.date|default:"Never" }}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="confirmSubunitReset({{ subunit.id }})">
+                                    <i class="bi bi-arrow-clockwise"></i> Reset
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No subunits found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmSubunitReset(subunitId) {
+    if (confirm('Are you sure you want to reset this subunit? This will set all values to zero!')) {
+        fetch(`/adminpanel/reset-subunit/${subunitId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+
+function confirmResetAll() {
+    if (confirm('Are you sure you want to reset ALL subunits in this unit? This cannot be undone!')) {
+        fetch("{% url 'reset_unit_subunits' unit.id %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -1,8 +1,9 @@
 
 from datetime import timedelta
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from .models import RechargeUnit, ReportGeneration, Unit, Subunit, CustomUser
+from .models import RechargeUnit, ReportGeneration, ResetHistory, Unit, Subunit, CustomUser
 
 from django.utils import timezone
 from django.shortcuts import render
@@ -323,13 +324,14 @@ def delete_manager(request, manager_id):
 
 ###################################################################################################
 from django.shortcuts import render, get_object_or_404
-from manager_dashboard.models import Expense, DailyReading, Attendance
+from manager_dashboard.models import Expense, DailyReading, Attendance, MonthlyOpeningSub, RechargeUnitDailyReading, RechargeUnitMonthlyOpening
 from admin_dashboard.models import ReportGeneration
 
 from django.shortcuts import render
 from datetime import date
 from .models import ReportGeneration, Unit
 
+@login_required
 def report_list(request):
     today = date.today()
 
@@ -363,6 +365,7 @@ def report_list(request):
     })
 
 
+@login_required
 def report_detail(request, report_id):
     report = get_object_or_404(ReportGeneration, id=report_id)
     
@@ -386,3 +389,326 @@ def report_detail(request, report_id):
         'total_water_supply': total_water_supply,
         'cash_in_hand': cash_in_hand,
     })
+
+
+
+###################################################################################################
+
+from django.views.generic import TemplateView
+from django.shortcuts import redirect
+from django.contrib import messages
+from django.utils import timezone
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+
+class GrandResetView(LoginRequiredMixin,TemplateView):
+    template_name = 'admin_dashboard/grand_reset.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['units'] = Unit.objects.filter(is_deleted=False)
+        return context
+    
+@login_required
+def subunit_reset(request):
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Prevent duplicate resets on same date
+                if MonthlyOpeningSub.objects.filter(date=timezone.now().date()).exists():
+                    messages.warning(request, 'Subunits already reset today!')
+                    return JsonResponse({'status': 'warning', 'message': 'Subunits already reset today!'})#redirect('grand_reset')
+
+                # Create history record
+                reset_history = ResetHistory.objects.create(
+                    action_type='subunit_reset_plus',
+                    date=timezone.now().date()
+                )
+
+                subunits = Subunit.objects.filter(is_deleted=False)
+                if not subunits.exists():
+                    messages.warning(request, 'No active subunits found to reset')
+                    #return redirect('grand_reset')
+                    return JsonResponse({'status': 'warning', 'message': 'No active subunits found to reset'})
+
+
+                # Bulk create openings
+                openings = [
+                    MonthlyOpeningSub(
+                        subunit=subunit,
+                        date=reset_history.date,
+                        amount_opening=0,
+                        dispenser_opening=0,
+                        reset_history=reset_history
+                    )
+                    for subunit in subunits
+                ]
+                MonthlyOpeningSub.objects.bulk_create(openings)
+                
+                messages.success(request, f'Successfully reset {len(subunits)} subunits!')
+
+                # return redirect('grand_reset')
+                return JsonResponse({'status': 'success', 'message': f'Successfully reset {len(subunits)} subunits!'})
+
+        except Exception as e:
+            messages.error(
+                request, 
+                f'Error resetting subunits: {str(e)}'
+            )
+            return JsonResponse({'status': 'error', 'message': f'Error resetting subunits: {str(e)}'})
+            #return redirect('grand_reset')
+
+    return redirect('grand_reset')
+
+
+from django.db import transaction
+
+
+class FillRechargeView(LoginRequiredMixin,TemplateView):
+    template_name = 'admin_dashboard/fill_recharge.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        units = Unit.objects.filter(is_deleted=False).prefetch_related('recharge_units')
+        
+        # Prepare recharge units with their last closing readings
+        for unit in units:
+            unit.recharge_units_data = []
+            for ru in unit.recharge_units.all():
+                last_daily = RechargeUnitDailyReading.objects.filter(
+                    recharge_unit=ru
+                ).order_by('-date').first()
+                unit.recharge_units_data.append({
+                    'object': ru,
+                    'last_closing': last_daily.closing_reading if last_daily else 0
+                })
+        
+        context['units'] = units
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        # Create ResetHistory record
+        reset_history = ResetHistory.objects.create(
+            action_type='recharge_fill_plus',
+            date=timezone.now().date()
+        )
+        
+        processed_count = 0
+        recharge_units = RechargeUnit.objects.filter(is_deleted=False)
+        
+        for ru in recharge_units:
+            ru_id = str(ru.id)
+            opening_key = f'opening_{ru_id}'
+            action_key = f'action_{ru_id}'
+            
+            if opening_key not in request.POST or request.POST[opening_key]=="" or  action_key not in request.POST:
+                continue
+
+            try:
+                input_value = int(request.POST[opening_key])
+                action = request.POST[action_key]
+                
+                # Get last closing reading
+                last_daily = RechargeUnitDailyReading.objects.filter(
+                    recharge_unit=ru
+                ).order_by('-date').first()
+                last_closing = last_daily.closing_reading if last_daily else 0
+                
+                # Calculate opening reading
+                opening_reading = (last_closing + input_value) if action == 'add' else input_value
+                
+                # Update or create monthly opening
+                RechargeUnitMonthlyOpening.objects.update_or_create(
+                    recharge_unit=ru,
+                    date=reset_history.date,
+                    defaults={
+                        'opening_reading': opening_reading,
+                        'reset_history': reset_history
+                    }
+                )
+                
+                processed_count += 1
+                
+            except (ValueError, TypeError) as e:
+                messages.error(request, f"Invalid input for {ru.name}: {e}")
+                continue
+
+        if processed_count > 0:
+            messages.success(request, f"Successfully processed {processed_count} recharge units!")
+        else:
+            messages.warning(request, "No recharge units were processed")
+            reset_history.delete()  # Clean up unused history
+
+        return redirect('grand_reset')
+    
+
+
+
+
+###################################################################################################
+
+
+
+
+
+class UnitSubunitsView(LoginRequiredMixin,TemplateView):
+    template_name = 'admin_dashboard/unit_subunits.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        unit = get_object_or_404(Unit, pk=self.kwargs['unit_id'])
+        context['unit'] = unit
+        context['subunits'] = unit.subunit_set.filter(is_deleted=False)
+        return context
+
+class UnitRechargeUnitsView(LoginRequiredMixin,TemplateView):
+    template_name = 'admin_dashboard/unit_recharge_units.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        unit = get_object_or_404(Unit, pk=self.kwargs['unit_id'])
+        recharge_units = unit.recharge_units.filter(is_deleted=False)
+        
+        # Prepare recharge units with their last closing readings
+        recharge_units_data = []
+        for ru in recharge_units:
+            last_daily = RechargeUnitDailyReading.objects.filter(
+                recharge_unit=ru
+            ).order_by('-date').first()
+            recharge_units_data.append({
+                'object': ru,
+                'last_closing': last_daily.closing_reading if last_daily else 0
+            })
+        
+        context['unit'] = unit
+        context['recharge_units_data'] = recharge_units_data
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        unit = get_object_or_404(Unit, pk=self.kwargs['unit_id'])
+        recharge_units = unit.recharge_units.filter(is_deleted=False)
+        with transaction.atomic():
+                
+            # Create ResetHistory record
+            reset_history = ResetHistory.objects.create(
+                action_type='recharge_fill',
+                date=timezone.now().date()
+            )
+            
+            processed_count = 0
+            
+            for ru_data in recharge_units:
+                ru = ru_data
+                ru_id = str(ru.id)
+                opening_key = f'opening_{ru_id}'
+                action_key = f'action_{ru_id}'
+                
+                if opening_key not in request.POST or request.POST[opening_key] == "" or action_key not in request.POST:
+                    continue
+
+                try:
+                    input_value = int(request.POST[opening_key])
+                    action = request.POST[action_key]
+                    
+                    # Get last closing reading
+                    last_daily = RechargeUnitDailyReading.objects.filter(
+                        recharge_unit=ru
+                    ).order_by('-date').first()
+                    last_closing = last_daily.closing_reading if last_daily else 0
+                    
+                    # Calculate opening reading
+                    opening_reading = (last_closing + input_value) if action == 'add' else input_value
+                    
+                    # Update or create monthly opening
+                    RechargeUnitMonthlyOpening.objects.update_or_create(
+                        recharge_unit=ru,
+                        date=reset_history.date,
+                        defaults={
+                            'opening_reading': opening_reading,
+                            'reset_history': reset_history
+                        }
+                    )
+                    
+                    processed_count += 1
+                    
+                except (ValueError, TypeError) as e:
+                    messages.error(request, f"Invalid input for {ru.name}: {e}")
+                    continue
+
+            if processed_count > 0:
+                messages.success(request, f"Successfully processed {processed_count} recharge units!")
+            else:
+                messages.warning(request, "No recharge units were processed")
+                #reset_history.delete()  # Clean up unused history
+
+        return redirect('grand_reset')
+    
+
+@login_required
+def reset_single_subunit(request, subunit_id):
+    if request.method == 'POST':
+        subunit = get_object_or_404(Subunit, pk=subunit_id)
+        today = timezone.now().date()
+        
+        # Check for existing reset today
+        if subunit.monthlyopeningsub_set.filter(date=today).exists():
+            messages.warning(request, f'{subunit.name} already reset today!')
+            #return redirect('unit_subunits', unit_id=subunit.unit.id)
+            return JsonResponse({'status': 'error', 'message': f'{subunit.name} already reset today!'})
+        
+        with transaction.atomic():
+            reset_history = ResetHistory.objects.create(
+                action_type='subunit_reset',
+                date=today
+            )
+            MonthlyOpeningSub.objects.create(
+                subunit=subunit,
+                date=today,
+                amount_opening=0,
+                dispenser_opening=0,
+                reset_history=reset_history
+            )
+        
+        messages.success(request, f'{subunit.name} reset successfully!')
+        return JsonResponse({'status': 'success', 'message': f'{subunit.name} reset successfully!'})
+        
+        #return redirect('unit_subunits', unit_id=subunit.unit.id)
+    return redirect('grand_reset')
+
+
+@login_required
+def reset_unit_subunits(request, unit_id):
+    if request.method == 'POST':
+        unit = get_object_or_404(Unit, pk=unit_id)
+        today = timezone.now().date()
+        subunits = unit.subunit_set.filter(is_deleted=False)
+        
+        with transaction.atomic():
+            reset_history = ResetHistory.objects.create(
+                action_type='subunit_reset',
+                date=today
+            )
+            
+            created_count = 0
+            for subunit in subunits:
+                # Skip if already has reset today
+                if not subunit.monthlyopeningsub_set.filter(date=today).exists():
+                    MonthlyOpeningSub.objects.create(
+                        subunit=subunit,
+                        date=today,
+                        amount_opening=0,
+                        dispenser_opening=0,
+                        reset_history=reset_history
+                    )
+                    created_count += 1
+            
+            if created_count == 0:
+                messages.warning(request, 'All subunits already reset today!')
+                return JsonResponse({'status': 'error', 'message': f'All subunits already reset today!'})
+                #reset_history.delete()
+            else:
+                messages.success(request, f'Reset {created_count} subunits!')
+
+        return JsonResponse({'status': 'success', 'message': f'Reset {created_count} subunits!'})
+        #return redirect('unit_subunits', unit_id=unit_id)
+    return redirect('grand_reset')

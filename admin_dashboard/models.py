@@ -1,5 +1,10 @@
 from django.db import models
 
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class SoftDeleteModel(models.Model):
     is_deleted = models.BooleanField(default=False)
 
@@ -14,20 +19,22 @@ class Unit(SoftDeleteModel):
     name = models.CharField(max_length=255)
     city = models.CharField(max_length=255)
 
+    objects = SoftDeleteManager()  # Use generic manager
+
     def __str__(self):
         return self.name
 
 class Subunit(SoftDeleteModel):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-
+    objects = SoftDeleteManager()  # Use generic manager
     def __str__(self):
         return self.name
 
 class RechargeUnit(SoftDeleteModel):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="recharge_units")
     name = models.CharField(max_length=255)
-
+    objects = SoftDeleteManager()  # Use generic manager
     def __str__(self):
         return self.name
     
@@ -78,3 +85,19 @@ class ReportGeneration(models.Model):
 
     def __str__(self):
         return f"Report by {self.manager.username} on {self.date}"
+
+class ResetHistory(models.Model):
+    ACTION_CHOICES = (
+        ('subunit_reset', 'Subunit Reset'),
+        ('recharge_fill', 'Recharge Fill'),
+        ('subunit_reset_plus', 'Subunit Reset+'),
+        ('recharge_fill_plus', 'Recharge Fill+'),
+    )
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    date = models.DateField()
+    is_undo = models.BooleanField(default=False)
+
+
+    def __str__(self):
+        return f"{self.get_action_type_display()} - {self.date}"
