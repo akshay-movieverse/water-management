@@ -2,3 +2,5 @@ monday/
 .env
 __pycache__/
 staticfiles/
+datamaker.py
+/migrations

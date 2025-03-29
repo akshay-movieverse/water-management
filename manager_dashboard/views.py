@@ -1,28 +1,64 @@
 from django.utils import timezone
 from django.shortcuts import render, redirect
+from django.db.models import Max
 from django.contrib.auth.decorators import login_required
 from django.utils.timezone import now, timedelta
 from .models import MonthlyOpeningSub, RechargeUnitDailyReading, RechargeUnitMonthlyOpening, Subunit, DailyReading, Attendance, Expense, Worker
-from admin_dashboard.models import RechargeUnit, ReportGeneration, Unit
+from admin_dashboard.models import RechargeUnit, ReportGeneration, ResetHistory, Unit
 
 
-def is_date_allowed(date):
-    """Check if the given date is within the allowed range (last 3 days + today)."""
+def is_date_allowed(date, unit):
+    """Check if date is within last 3 days + today AND after last reset"""
+    # Get last reset date for the unit
+    last_reset = ResetHistory.objects.filter(
+        Q(action_type__in=['subunit_reset_plus', 'recharge_fill_plus']) &
+        Q(is_undo=False) &
+        (Q(monthlyopeningsub__subunit__unit=unit) |
+         Q(rechargeunitmonthlyopening__recharge_unit__unit=unit))
+    ).aggregate(last_date=Max('date')).get('last_date')
+
+    # Original 3-day window dates
     today = now().date()
     three_days_ago = today - timedelta(days=3)
-    allowed_dates = {three_days_ago + timedelta(days=i) for i in range(4)}
-    return date in allowed_dates
+    original_dates = {three_days_ago + timedelta(days=i) for i in range(4)}
 
+    #print("Last reset date:", last_reset)
+    # Calculate allowed dates
+    if last_reset:
+        
+        # Intersection of original dates and dates >= reset
+        allowed_dates = {d for d in original_dates if d > last_reset}
+    else:
+        allowed_dates = original_dates
+
+    return date in allowed_dates
 
 
 @login_required
 def manager_dashboard(request):
+    unit = request.user.unit
     today = now().date()
     three_days_ago = today - timedelta(days=3)
-    allowed_dates = reversed([three_days_ago + timedelta(days=i) for i in range(4)])
     
+    # Generate possible dates and filter
+    possible_dates = [three_days_ago + timedelta(days=i) for i in range(4)]
+    allowed_dates = [date for date in possible_dates if is_date_allowed(date, unit)]
+
+        # Get top 4 recent reports
+    intervals = get_reset_intervals(request.user.unit)
+    for interval in intervals:
+        totals = calculate_interval_totals(
+            request.user.unit, 
+            interval['start'], 
+            interval['end']
+        )
+        interval.update(totals)
+    
+    recent_reports = sorted(intervals, key=lambda x: x['end'], reverse=True)[:4]
+
     return render(request, 'manager_dashboard/dashboard.html', {
-        'allowed_dates': allowed_dates,
+        'allowed_dates': reversed(allowed_dates),
+        'recent_reports': recent_reports
     })
 
 from django.contrib import messages
@@ -30,12 +66,12 @@ from django.contrib import messages
 @login_required
 def fill_daily_readings(request, date):
     date = timezone.datetime.strptime(date, "%Y-%m-%d").date()
-    
-    if not is_date_allowed(date):
+    unit = request.user.unit
+    if not is_date_allowed(date, unit):
         messages.error(request, "You can only fill readings for the last 3 days and today.")
         return redirect('manager_dashboard')
 
-    unit = request.user.unit
+    
     subunits = Subunit.objects.filter(unit=unit)
     
     if request.method == 'POST':
@@ -239,12 +275,12 @@ from .models import Worker, Attendance
 @login_required
 def fill_attendance(request, date):
     date = timezone.datetime.strptime(date, "%Y-%m-%d").date()
-
-    if not is_date_allowed(date):
+    unit = request.user.unit
+    if not is_date_allowed(date, unit):
         messages.error(request, "You can only fill attendance for the last 3 days and today.")
         return redirect('manager_dashboard')
 
-    unit = request.user.unit
+    
     workers = Worker.objects.filter(unit=unit)
 
     # Fetch existing attendance records
@@ -278,12 +314,12 @@ from .models import Expense
 @login_required
 def fill_expenses(request, date):
     date = timezone.datetime.strptime(date, "%Y-%m-%d").date()
-
-    if not is_date_allowed(date):
+    unit = request.user.unit
+    if not is_date_allowed(date,unit):
         messages.error(request, "You can only fill expenses for the last 3 days and today.")
         return redirect('manager_dashboard')
     
-    unit = request.user.unit
+
     categories = [
         'pickup_diesel', 'intra_v30_diesel', 'ace_new_diesel', 'diesel', 'salary',
         'electricity', 'plant_expense', 'petrol', 'nagar_palika', 'others'
@@ -320,12 +356,12 @@ from .models import Expense, DailyReading, Attendance
 @login_required
 def generate_report(request, date):
     date = timezone.datetime.strptime(date, "%Y-%m-%d").date()
-
-    if not is_date_allowed(date):
+    unit = request.user.unit
+    if not is_date_allowed(date, unit):
         messages.error(request, "You can only generate reports for the last 3 days and today.")
         return redirect('manager_dashboard')
     
-    unit = request.user.unit
+
     subunit_readings = DailyReading.objects.filter(date=date, subunit__unit=unit)
     recharge_readings = RechargeUnitDailyReading.objects.filter(date=date, recharge_unit__unit=unit)
     expenses = Expense.objects.filter(date=date, unit=unit)
@@ -534,12 +570,12 @@ def delete_worker(request, worker_id):
 @login_required
 def fill_recharge_readings(request, date):
     date = timezone.datetime.strptime(date, "%Y-%m-%d").date()
-
-    if not is_date_allowed(date):
+    unit = request.user.unit
+    if not is_date_allowed(date,unit):
         messages.error(request, "You can only fill readings for the last 3 days and today.")
         return redirect('manager_dashboard')
 
-    unit = request.user.unit
+
     recharge_units = RechargeUnit.objects.filter(unit=unit)
 
     if request.method == 'POST':
@@ -643,4 +679,241 @@ def fill_recharge_readings(request, date):
     return render(request, 'manager_dashboard/fill_recharge_readings.html', {
         'recharge_unit_data': recharge_unit_data,
         'date': date,
+    })
+
+
+
+
+
+
+
+
+
+def calculate_interval_totals(unit, start_date, end_date):
+    """Calculate totals for a given date range"""
+    # Subunit calculations
+    subunit_readings = DailyReading.objects.filter(
+        subunit__unit=unit,
+        date__range=[start_date, end_date]
+    )
+    subunit_total = sum(r.amount_rs() for r in subunit_readings)
+    water_supply = sum(r.water_supply() for r in subunit_readings)
+    
+    # Recharge calculations
+    recharge_readings = RechargeUnitDailyReading.objects.filter(
+        recharge_unit__unit=unit,
+        date__range=[start_date, end_date]
+    )
+    recharge_total = sum(r.amount_rs() for r in recharge_readings)
+    
+    # Expense calculations
+    expenses = Expense.objects.filter(
+        unit=unit,
+        date__range=[start_date, end_date]
+    )
+    expense_total = sum(e.amount for e in expenses)
+    
+    return {
+        'subunit_total': subunit_total,
+        'recharge_total': recharge_total,
+        'expense_total': expense_total,
+        'net_income': (subunit_total + recharge_total) - expense_total,
+        'water_supply': water_supply
+    }
+
+
+
+
+
+
+from datetime import datetime, timedelta
+
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
+from dateutil.relativedelta import relativedelta
+
+@login_required
+def generate_monthly_report(request,  start_date=None, end_date=None):
+    unit = request.user.unit
+    # start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    # end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    # Date validation
+    if start_date and end_date:
+        try:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid date format")
+            return redirect('report_intervals')
+        
+        # Verify date range is valid
+        valid_intervals = get_reset_intervals(unit)
+        valid = any(
+            interval['start'] <= start_date and interval['end'] >= end_date
+            for interval in valid_intervals
+        )
+        
+        if not valid:
+            messages.error(request, "Invalid date range selected")
+            return redirect('report_intervals')
+    
+    # Subunit Data Aggregation
+    subunits = Subunit.objects.filter(unit=unit)
+    subunit_data = []
+    total_subunit_income = 0
+    total_water_supply = 0
+    for subunit in subunits:
+        readings = DailyReading.objects.filter(
+            subunit=subunit,
+            date__range=[start_date, end_date]
+        )
+        subunit_amount = sum(r.amount_rs() for r in readings)
+        water_supply = sum(r.water_supply() for r in readings)
+        subunit_data.append({
+            'subunit': subunit,
+            'total_amount': subunit_amount,
+            'total_water': water_supply,
+        })
+        total_subunit_income += subunit_amount
+        total_water_supply += water_supply
+    
+    # Recharge Unit Data Aggregation
+    recharge_units = RechargeUnit.objects.filter(unit=unit)
+    recharge_data = []
+    total_recharge_income = 0
+    for recharge_unit in recharge_units:
+        readings = RechargeUnitDailyReading.objects.filter(
+            recharge_unit=recharge_unit,
+            date__range=[start_date, end_date]
+        )
+        recharge_amount = sum(r.amount_rs() for r in readings)
+        recharge_data.append({
+            'recharge_unit': recharge_unit,
+            'total_amount': recharge_amount,
+        })
+        total_recharge_income += recharge_amount
+    
+    # Expenses Aggregation
+    expenses = Expense.objects.filter(
+        unit=unit,
+        date__range=[start_date, end_date]
+    )
+    expense_categories = {}
+    for expense in expenses:
+        category = expense.get_category_display()
+        expense_categories[category] = expense_categories.get(category, 0) + expense.amount
+    
+    # Attendance Aggregation
+    workers = Worker.objects.filter(unit=unit)
+    attendance_data = []
+    for worker in workers:
+        present_days = Attendance.objects.filter(
+            worker=worker,
+            date__range=[start_date, end_date],
+            is_present=True
+        ).count()
+        attendance_data.append({'worker': worker, 'present_days': present_days})
+    
+    # Totals
+    total_income = total_subunit_income + total_recharge_income
+    total_expense = sum(expense_categories.values(), 0)
+    cash_in_hand = total_income - total_expense
+    
+    context = {
+        #'month': month_date.strftime("%B %Y"),
+        'subunit_data': subunit_data,
+        'recharge_data': recharge_data,
+        'expense_categories': expense_categories,
+        'attendance_data': attendance_data,
+        'total_subunit_income': total_subunit_income,
+        'total_recharge_income': total_recharge_income,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'cash_in_hand': cash_in_hand,
+        'total_water_supply': total_water_supply,
+        'unit': unit,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+    return render(request, 'manager_dashboard/monthly_report.html', context)
+
+
+
+
+
+from django.db.models import Q
+
+def get_reset_intervals(unit):
+    # Get all reset+ actions for the unit
+    resets = ResetHistory.objects.filter(
+        Q(action_type='subunit_reset_plus') &
+        Q(is_undo=False) &
+        (
+            Q(monthlyopeningsub__subunit__unit=unit) | 
+            Q(rechargeunitmonthlyopening__recharge_unit__unit=unit)
+        )
+    ).order_by('date').distinct()
+    
+    intervals = []
+    
+    # Get first reading date as initial start
+    first_reading = DailyReading.objects.filter(subunit__unit=unit).order_by('date').first()
+    start_date = first_reading.date if first_reading else timezone.now().date()
+    
+    for reset in resets:
+        intervals.append({
+            'start': start_date,
+            'end': reset.date,
+            'reset': reset
+        })
+        start_date = reset.date + timedelta(days=1)
+    
+    # Add current active interval
+    # if start_date <= timezone.now().date():
+    #     intervals.append({
+    #         'start': start_date,
+    #         'end': timezone.now().date(),
+    #         'reset': None
+    #     })
+    
+    return intervals
+
+@login_required
+def report_intervals(request):
+    unit = request.user.unit
+    intervals = get_reset_intervals(unit)
+    
+    # Month/Year filtering
+    month_filter = request.GET.get('month')
+    if month_filter:
+        try:
+            filter_date = datetime.strptime(month_filter, "%Y-%m").date()
+            start_month = filter_date.replace(day=1)
+            end_month = (start_month + relativedelta(months=1)) - relativedelta(days=1)
+            
+            # Filter intervals overlapping with month
+            intervals = [
+                i for i in intervals
+                if not (i['end'] < start_month or i['start'] > end_month)
+            ]
+        except ValueError:
+            messages.error(request, "Invalid month format")
+    
+    # Calculate totals
+    for interval in intervals:
+        totals = calculate_interval_totals(
+            unit, interval['start'], interval['end']
+        )
+        interval.update(totals)
+    
+    # Pagination and ordering
+    intervals = sorted(intervals, key=lambda x: x['end'], reverse=True)
+    paginator = Paginator(intervals, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'manager_dashboard/report_intervals.html', {
+        'page_obj': page_obj,
+        'unit': unit,
+        'selected_month': month_filter
     })

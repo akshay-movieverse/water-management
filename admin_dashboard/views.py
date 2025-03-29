@@ -1,8 +1,11 @@
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
+
+from manager_dashboard.views import calculate_interval_totals, get_reset_intervals
 from .models import RechargeUnit, ReportGeneration, ResetHistory, Unit, Subunit, CustomUser
 
 from django.utils import timezone
@@ -24,7 +27,7 @@ def admin_dashboard(request):
     end_of_week = start_of_week + timedelta(days=6)
     
     # Get all managers
-    managers = CustomUser.objects.filter(is_manager=True, is_deleted=False).prefetch_related('unit')
+    managers = reversed(CustomUser.objects.filter(is_manager=True, is_deleted=False).prefetch_related('unit'))
     
     # Prepare manager data with report statistics
     managers_data = []
@@ -348,7 +351,7 @@ def delete_manager(request, manager_id):
 
 ###################################################################################################
 from django.shortcuts import render, get_object_or_404
-from manager_dashboard.models import Expense, DailyReading, Attendance, MonthlyOpeningSub, RechargeUnitDailyReading, RechargeUnitMonthlyOpening
+from manager_dashboard.models import Expense, DailyReading, Attendance, MonthlyOpeningSub, RechargeUnitDailyReading, RechargeUnitMonthlyOpening, Worker
 from admin_dashboard.models import ReportGeneration
 
 from django.shortcuts import render
@@ -360,7 +363,7 @@ def report_list(request):
     today = date.today()
 
     # Get filters from request
-    selected_date = request.GET.get('date')
+    selected_date = request.GET.get('date',timezone.now().date())
     selected_unit = request.GET.get('unit')
 
     # Query reports
@@ -379,7 +382,7 @@ def report_list(request):
     # Convert available report dates to string format (YYYY-MM-DD)
     available_dates = list(ReportGeneration.objects.values_list('date', flat=True).distinct())
     available_dates = [d.strftime('%Y-%m-%d') for d in available_dates]  # Convert to string
-    print(available_dates)
+    #print(available_dates)
 
     return render(request, 'admin_dashboard/report_list.html', {
         'reports': reports,
@@ -762,3 +765,174 @@ def reset_unit_subunits(request, unit_id):
         return JsonResponse({'status': 'success', 'message': f'Reset {created_count} subunits!'})
         #return redirect('unit_subunits', unit_id=unit_id)
     return redirect('grand_reset')
+
+
+
+
+
+
+####################################################################################report
+
+
+@login_required
+def admin_monthly_reports(request):
+    # Get all reset intervals across all units
+    all_intervals = []
+    units = Unit.objects.filter(is_deleted=False)
+    selected_month = request.GET.get('month')
+    selected_unit = request.GET.get('unit')
+
+    for unit in units:
+        intervals = get_reset_intervals(unit)
+        for interval in intervals:
+            totals = calculate_interval_totals(unit, interval['start'], interval['end'])
+            interval.update(totals)
+            interval['unit'] = unit
+            all_intervals.append(interval)
+
+     # Apply filters
+    if selected_month:
+        try:
+            filter_date = datetime.strptime(selected_month, "%Y-%m").date()
+            start_month = filter_date.replace(day=1)
+            end_month = (start_month + relativedelta(months=1)) - relativedelta(days=1)
+            
+            # Filter intervals overlapping with month
+            all_intervals = [
+                i for i in all_intervals
+                if not (i['end'] < start_month or i['start'] > end_month)
+            ]
+        except ValueError:
+            messages.error(request, "Invalid month format")
+            return redirect('admin_monthly_reports')
+
+    if selected_unit:
+        all_intervals = [i for i in all_intervals if i['unit'].id == int(selected_unit)]
+
+    # Sort all intervals by end date
+    all_intervals = sorted(all_intervals, key=lambda x: x['end'], reverse=True)
+    
+    # Pagination
+    paginator = Paginator(all_intervals, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'admin_dashboard/monthly_reports.html', {
+        'page_obj': page_obj,
+        'units': units,
+        'selected_month': selected_month,
+        'selected_unit': selected_unit
+    })
+
+
+
+
+
+# views.py
+@login_required
+def generate_monthly_report(request, start_date=None, end_date=None):
+    # Get unit from request (admin can specify any unit)
+    unit_id = request.GET.get('unit')
+    unit = get_object_or_404(Unit, id=unit_id) if unit_id else None
+    
+    # Permission check
+    # if not request.user.is_admin:
+    #     if not unit or unit != request.user.unit:
+    #         #raise PermissionDenied("You don't have permission to view this report")
+    #         pass
+    #     unit = request.user.unit
+
+    # # Date validation
+    if start_date and end_date:
+        try:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid date format")
+            return redirect('admin_monthly_reports')
+        
+    #     # Verify date range is valid
+    #     valid_intervals = get_reset_intervals(unit)
+    #     valid = any(
+    #         interval['start'] <= start_date and interval['end'] >= end_date
+    #         for interval in valid_intervals
+    #     )
+        
+    #     if not valid:
+    #         messages.error(request, "Invalid date range selected")
+    #         return redirect('admin_monthly_reports')
+
+    # Data aggregation using existing logic
+    subunits = Subunit.objects.filter(unit=unit)
+    subunit_data = []
+    total_subunit_income = 0
+    total_water_supply = 0
+    for subunit in subunits:
+        readings = DailyReading.objects.filter(
+            subunit=subunit,
+            date__range=[start_date, end_date]
+        )
+        subunit_amount = sum(r.amount_rs() for r in readings)
+        water_supply = sum(r.water_supply() for r in readings)
+        subunit_data.append({
+            'subunit': subunit,
+            'total_amount': subunit_amount,
+            'total_water': water_supply,
+        })
+        total_subunit_income += subunit_amount
+        total_water_supply += water_supply
+
+    recharge_units = RechargeUnit.objects.filter(unit=unit)
+    recharge_data = []
+    total_recharge_income = 0
+    for recharge_unit in recharge_units:
+        readings = RechargeUnitDailyReading.objects.filter(
+            recharge_unit=recharge_unit,
+            date__range=[start_date, end_date]
+        )
+        recharge_amount = sum(r.amount_rs() for r in readings)
+        recharge_data.append({
+            'recharge_unit': recharge_unit,
+            'total_amount': recharge_amount,
+        })
+        total_recharge_income += recharge_amount
+
+    expenses = Expense.objects.filter(
+        unit=unit,
+        date__range=[start_date, end_date]
+    )
+    expense_categories = {}
+    for expense in expenses:
+        category = expense.get_category_display()
+        expense_categories[category] = expense_categories.get(category, 0) + expense.amount
+
+    workers = Worker.objects.filter(unit=unit)
+    attendance_data = []
+    for worker in workers:
+        present_days = Attendance.objects.filter(
+            worker=worker,
+            date__range=[start_date, end_date],
+            is_present=True
+        ).count()
+        attendance_data.append({'worker': worker, 'present_days': present_days})
+
+    total_income = total_subunit_income + total_recharge_income
+    total_expense = sum(expense_categories.values(), 0)
+    cash_in_hand = total_income - total_expense
+
+    context = {
+        'subunit_data': subunit_data,
+        'recharge_data': recharge_data,
+        'expense_categories': expense_categories,
+        'attendance_data': attendance_data,
+        'total_subunit_income': total_subunit_income,
+        'total_recharge_income': total_recharge_income,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'cash_in_hand': cash_in_hand,
+        'total_water_supply': total_water_supply,
+        'unit': unit,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+    return render(request, 'admin_dashboard/admin_monthly_report.html', context)

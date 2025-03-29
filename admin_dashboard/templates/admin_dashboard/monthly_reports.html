@@ -1,0 +1,129 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block content %}
+
+<style>
+    @media (max-width: 768px) {
+        .table-responsive {
+            margin-left: -20px;
+            margin-right: -20px;
+            width: calc(100% + 40px);
+        }
+    }
+</style>
+
+
+<div class="container">
+
+    {% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Monthly Reports</h2>
+        <div class="btn-group" role="group">
+            <a href="{% url 'admin_reports' %}" class="btn btn-outline-primary">
+                Daily Reports
+            </a>
+            <a href="{% url 'admin_monthly_reports' %}" class="btn btn-primary">
+                Monthly Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="monthFilter" class="form-label">Month</label>
+                    <input type="month" 
+                           name="month" 
+                           id="monthFilter"
+                           class="form-control"
+                           value="{{ selected_month }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="unitFilter" class="form-label">Unit</label>
+                    <select name="unit" id="unitFilter" class="form-select">
+                        <option value="">All Units</option>
+                        {% for unit in units %}
+                        <option value="{{ unit.id }}" 
+                            {% if selected_unit|stringformat:"s" == unit.id|stringformat:"s" %}selected{% endif %}>
+                            {{ unit.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Apply Filters
+                    </button>
+                </div>
+                
+                <div class="col-md-3 d-flex align-items-end">
+                    <a href="{% url 'admin_monthly_reports' %}" class="btn btn-secondary w-100">
+                        Clear Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Unit</th>
+                            <th>Period</th>
+                            <th>Total Income</th>
+                            <th>Expenses</th>
+                            <th>Net Income</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for interval in page_obj %}
+                        <tr>
+                            <td>{{ interval.unit.name }}</td>
+                            <td>
+                                {{ interval.start|date:"M d" }} - {{ interval.end|date:"M d" }}
+                            </td>
+                            <td>₹{{ interval.subunit_total|add:interval.recharge_total }}</td>
+                            <td>₹{{ interval.expense_total }}</td>
+                            <td class="fw-bold text-success">₹{{ interval.net_income }}</td>
+                            <td>
+                                <a href="{% url 'admin_generate_monthly_report' interval.start interval.end %}?unit={{ interval.unit.id }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No monthly reports available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% include 'admin_dashboard/_pagination.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -16,8 +16,18 @@
     }
 </style>
 <div class="container mt-4">
-    <h2 class="mb-3">Generated Reports</h2>
 
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Daily Reports</h2>
+        <div class="btn-group" role="group">
+            <a href="{% url 'admin_reports' %}" class="btn btn-primary">
+                Daily Reports
+            </a>
+            <a href="{% url 'admin_monthly_reports' %}" class="btn btn-outline-primary">
+                Monthly Reports
+            </a>
+        </div>
+    </div>
     <!-- Filters Section -->
     <div class="d-flex justify-content-end">
         <form method="GET" class="row g-2">

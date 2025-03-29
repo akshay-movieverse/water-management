@@ -1,0 +1,121 @@
+{% extends 'manager_dashboard/base.html' %}
+
+{% block content %}
+<div class="container mt-4 px-1">
+    <div class="invoice-card p-4 shadow-lg bg-white rounded">
+        <div class="row mb-4 text-center text-md-start">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <h2 class="fw-bold">Monthly Report</h2>
+                <p class="text-muted">{{ start_date|date:"M d, Y" }} - {{ end_date|date:"M d, Y" }} </p>
+            </div>
+            <div class="col-md-4 text-center">
+                <h2 class="fw-bold">NEER AMRIT ENTERPRISES LLP</h2>
+                <p class="text-muted fw-bold">{{ unit.name }}</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="summary-table border p-2 rounded">
+                    <table class="table table-sm table-bordered text-center">
+                        <thead class="table-light"><tr><th colspan="2">Summary</th></tr></thead>
+                        <tbody>
+                            <tr><td>Subunit Income</td><td>₹{{ total_subunit_income }}</td></tr>
+                            <tr><td>Recharge Income</td><td>₹{{ total_recharge_income }}</td></tr>
+                            <tr class="table-warning"><td>Total Income</td><td>₹{{ total_income }}</td></tr>
+                            <tr><td>Total Expense</td><td>₹{{ total_expense }}</td></tr>
+                            <tr class="table-success"><td>Cash in Hand</td><td>₹{{ cash_in_hand }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subunit Readings -->
+        <h4 class="mb-3">Subunit Readings</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead class="table-dark">
+                    <tr><th>Subunit</th><th>Total Amount (₹)</th><th>Water Supply</th></tr>
+                </thead>
+                <tbody>
+                    {% for data in subunit_data %}
+                    <tr>
+                        <td>{{ data.subunit.name }}</td>
+                        <td>₹{{ data.total_amount }}</td>
+                        <td>{{ data.total_water }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-info">
+                        <td>Total</td>
+                        <td>₹{{ total_subunit_income }}</td>
+                        <td>{{ total_water_supply }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recharge Units -->
+        <h4 class="mb-3 mt-4">Recharge Units</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center">
+                <thead class="table-dark"><tr><th>Recharge Unit</th><th>Total Amount (₹)</th></tr></thead>
+                <tbody>
+                    {% for data in recharge_data %}
+                    <tr>
+                        <td>{{ data.recharge_unit.name }}</td>
+                        <td>₹{{ data.total_amount }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-info"><td>Total</td><td>₹{{ total_recharge_income }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+
+        <!-- Attendance -->
+        <div class="row mt-4">
+            <div class="col-md-6">        
+                <h4 class="mb-3 mt-4">Attendance</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead class="table-dark"><tr><th>Worker</th><th>Days Present</th></tr></thead>
+                        <tbody>
+                            {% for data in attendance_data %}
+                            <tr><td>{{ data.worker.name }}</td><td>{{ data.present_days }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+                    <!-- Expenses -->
+            <div class="col-md-6">
+                <h4 class="mb-3 mt-4">Expenses</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead class="table-dark"><tr><th>Category</th><th>Amount (₹)</th></tr></thead>
+                        <tbody>
+                            {% for category, amount in expense_categories.items %}
+                            <tr><td>{{ category }}</td><td>₹{{ amount }}</td></tr>
+                            {% endfor %}
+                            <tr class="table-warning"><td>Total</td><td>₹{{ total_expense }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <div class="text-center mt-4">
+            <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+        </div>
+    </div>
+</div>
+<style>
+    @media print {
+        body * { visibility: hidden; }
+        .invoice-card, .invoice-card * { visibility: visible; }
+        .invoice-card { position: absolute; left: 0; top: 0; }
+    }
+</style>
+{% endblock %}

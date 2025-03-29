@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    FillRechargeView, GrandResetView, UnitRechargeUnitsView, UnitSubunitsView, add_subunit_recharge, admin_dashboard, add_unit,  delete_recharge_unit, delete_reset, edit_unit, history_view, report_detail, report_list, reset_single_subunit, reset_unit_subunits, subunit_reset, unit_list, unit_detail, delete_unit,
+    FillRechargeView, GrandResetView, UnitRechargeUnitsView, UnitSubunitsView, add_subunit_recharge, admin_dashboard, add_unit, admin_monthly_reports,  delete_recharge_unit, delete_reset, edit_unit, generate_monthly_report, history_view, report_detail, report_list, reset_single_subunit, reset_unit_subunits, subunit_reset, unit_list, unit_detail, delete_unit,
     delete_subunit, add_manager, manager_list, delete_manager
 )
 
@@ -48,4 +48,11 @@ path('reset-unit-subunits/<int:unit_id>/', reset_unit_subunits, name='reset_unit
 
 path('history/', history_view, name='history'),
 path('delete-reset/<int:reset_id>/', delete_reset, name='delete_reset'),
+
+
+
+path('admin-monthly-reports/', admin_monthly_reports, name='admin_monthly_reports'),
+
+path('generate-monthly-report/<str:start_date>/<str:end_date>/', generate_monthly_report, name='admin_generate_monthly_report'),
+
 ]

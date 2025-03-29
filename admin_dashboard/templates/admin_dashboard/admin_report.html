@@ -11,12 +11,19 @@
             margin-left: 0 !important;
         }
     }
+    @media (max-width: 768px) {
+        .container {
+            margin-left: -15px;
+            margin-right: -15px;
+            width: calc(100% + 30px);
+        }
+    }
 </style>
-<div class="container mt-4 px-1">
+<div class="container px-1">
     <div class="invoice-card p-4 shadow-lg bg-white rounded">
         <div class="row mb-4 text-center text-md-start">
             <div class="col-md-4 mb-3 mb-md-0">
-                <h2 class="fw-bold">Report</h2>
+                <h2 class="fw-bold">Daily Report</h2>
                 <p class="text-muted">Date: {{ date }}</p>
             </div>
 
